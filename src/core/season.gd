@@ -6,7 +6,7 @@ extends RefCounted
 ## changed. Keeping the rules here means the headless season sim plays exactly
 ## the same game the player does.
 ##
-## A day:   start_day -> lend / turn_away (outfit) -> send_delves -> begin_dusk
+## A day:   start_day -> lend / turn_away / set_delve_floor (outfit) -> send_delves -> begin_dusk
 ##          -> take_card (per survivor) -> end_day
 ## Functions that can fail return "" on success or a short reason string.
 
@@ -49,6 +49,7 @@ static func start_day(db: ContentDB, st: GameState) -> void:
 	var rng := Rng.new(Rng.derive(st.run_seed, ["morning", st.day]))
 	st.loans.clear()
 	st.results.clear()
+	st.delve = {}
 	st.picks_left.clear()
 	st.candidates.clear()
 	# Walk-ins: one guaranteed per empty seat (all four on Day 1), plus a chance
@@ -172,15 +173,40 @@ static func buy(db: ContentDB, st: GameState, offer_index: int) -> String:
 
 # --- outfitting ----------------------------------------------------------------
 
-static func lend(db: ContentDB, st: GameState, hero_uid: String, gear_uids: Array, floor_index: int) -> String:
+## The whole party heads to one floor together.
+static func set_delve_floor(db: ContentDB, st: GameState, floor_index: int) -> String:
+	if floor_index < 1 or floor_index > db.floor_count():
+		return "no such floor"
+	st.delve_floor = floor_index
+	return ""
+
+
+## Moves a party member to a new slot. Slot 0 is the top of the stack, which
+## monsters and traps hit most, so it suits a tank.
+static func move_in_party(st: GameState, hero_uid: String, new_index: int) -> String:
+	if not st.party.has(hero_uid):
+		return "not in the party"
+	st.party.erase(hero_uid)
+	st.party.insert(clampi(new_index, 0, st.party.size()), hero_uid)
+	return ""
+
+
+## Who delves today, in slot order: kitted party members, top of the stack first.
+static func delving_party(st: GameState) -> Array:
+	var out: Array = []
+	for uid in st.party:
+		if not loan_for(st, uid).is_empty():
+			out.append(uid)
+	return out
+
+
+static func lend(db: ContentDB, st: GameState, hero_uid: String, gear_uids: Array) -> String:
 	if st.phase != GameState.Phase.OUTFIT:
 		return "not outfitting"
 	if not st.counter.has(hero_uid):
 		return "hero is not at the counter"
 	if is_candidate(st, hero_uid) and not st.party.has(hero_uid) and st.party.size() >= party_size(db):
 		return "the party is full: let someone go first"
-	if floor_index < 1 or floor_index > db.floor_count():
-		return "no such floor"
 	# Gear can come from the racks or from this hero's current loan (re-outfitting).
 	var available: Array = st.inventory.duplicate()
 	available.append_array(loan_for(st, hero_uid).get("gear", []))
@@ -203,7 +229,7 @@ static func lend(db: ContentDB, st: GameState, hero_uid: String, gear_uids: Arra
 		var g := st.find_gear(uid)
 		st.inventory.erase(g)
 		gear.append(g)
-	st.loans.append({"hero": hero_uid, "gear": gear, "floor": floor_index})
+	st.loans.append({"hero": hero_uid, "gear": gear})
 	if is_candidate(st, hero_uid) and not st.party.has(hero_uid):
 		st.party.append(hero_uid)  # kitting out a walk-in recruits them
 	return ""
@@ -236,12 +262,42 @@ static func loan_for(st: GameState, hero_uid: String) -> Dictionary:
 	return {}
 
 
-static func estimate_loan(db: ContentDB, st: GameState, hero_uid: String, gear: Array, floor_index: int, samples: int = -1) -> Dictionary:
+static func _delve_opts(db: ContentDB, st: GameState, floor_index: int) -> Dictionary:
 	var opts := {}
 	if is_boss_day(db, st) and floor_index >= int(db.bal("boss.floor", 5)):
 		opts["boss"] = db.bal("boss.monster", "")
-	var seed_value := Rng.derive(st.run_seed, ["estimate", st.day, hero_uid])
-	return SurvivalEstimator.estimate(db, st.roster[hero_uid], gear, floor_index, seed_value, samples, opts)
+	return opts
+
+
+## The party as it would delve, with optional what-ifs: kits = {hero uid: gear array}
+## replaces or adds a hero's kit (an empty array leaves them home).
+static func _members(st: GameState, kits: Dictionary = {}) -> Array:
+	var members: Array = []
+	var order: Array = st.party.duplicate()
+	for uid in kits:
+		if not order.has(uid):
+			order.append(uid)  # a walk-in being tried out joins at the bottom
+	for uid in order:
+		var gear: Array = kits[uid] if kits.has(uid) else loan_for(st, uid).get("gear", [])
+		if not gear.is_empty():
+			members.append({"hero": st.roster[uid], "gear": gear})
+	return members
+
+
+## Survival read for the whole party on a floor. See SurvivalEstimator.estimate_party.
+static func estimate_party(db: ContentDB, st: GameState, floor_index: int = -1, samples: int = -1, kits: Dictionary = {}) -> Dictionary:
+	var f := st.delve_floor if floor_index < 1 else floor_index
+	var members := _members(st, kits)
+	if members.is_empty():
+		return {"samples": 0, "wipe_rate": 0.0, "any_death_rate": 0.0, "band": "safe", "heroes": {}}
+	var seed_value := Rng.derive(st.run_seed, ["estimate", st.day])
+	return SurvivalEstimator.estimate_party(db, members, f, seed_value, samples, _delve_opts(db, st, f))
+
+
+## One hero's read if they took this kit, alongside the rest of today's party.
+static func estimate_loan(db: ContentDB, st: GameState, hero_uid: String, gear: Array, floor_index: int = -1, samples: int = -1) -> Dictionary:
+	var est := estimate_party(db, st, floor_index, samples, {hero_uid: gear})
+	return est.heroes.get(hero_uid, {"death_rate": 0.0, "band": "safe"})
 
 
 # --- the delve -----------------------------------------------------------------
@@ -256,14 +312,20 @@ static func send_delves(db: ContentDB, st: GameState) -> void:
 			st.tavern.append(uid)
 			st.counter.erase(uid)
 	st.candidates.clear()
-	for loan in st.loans:
-		var hero: Dictionary = st.roster[loan.hero]
-		var opts := {}
-		if is_boss_day(db, st) and int(loan.floor) >= int(db.bal("boss.floor", 5)):
-			opts["boss"] = db.bal("boss.monster", "")
-		var seed_value := Rng.derive(st.run_seed, ["delve", st.day, loan.hero])
-		st.results.append(RunSimulator.simulate(db, hero, loan.gear, int(loan.floor), seed_value, opts))
-		st.bump_stat("loans")
+	st.delve = {}
+	var members := _members(st)
+	if not members.is_empty():
+		var seed_value := Rng.derive(st.run_seed, ["delve", st.day])
+		var run := RunSimulator.simulate_party(db, members, st.delve_floor, seed_value, _delve_opts(db, st, st.delve_floor))
+		st.results = run.heroes
+		run.erase("heroes")
+		var party_keys := {}
+		for r in st.results:
+			party_keys["h%d" % int(r.slot)] = r.hero_uid
+		run["party"] = party_keys  # actor key -> hero uid, for playback
+		st.delve = run
+		st.bump_stat("loans", members.size())
+		st.bump_stat("delves")
 	st.phase = GameState.Phase.DELVE
 
 
@@ -286,7 +348,7 @@ static func begin_dusk(db: ContentDB, st: GameState) -> Array:
 			entry.lost_gear = loan.gear.duplicate()
 			st.memorial.append({
 				"hero": hero.name, "class_id": hero.class_id, "day": st.day,
-				"floor": r.floor, "killer": _killer_of(r), "gear": loan.gear.duplicate(true),
+				"floor": r.floor, "killer": r.get("killer", ""), "gear": loan.gear.duplicate(true),
 			})
 			st.bump_stat("deaths")
 			st.bump_stat("gear_lost", loan.gear.size())
@@ -331,13 +393,6 @@ static func _potion_spent(db: ContentDB, g: Dictionary, r: Dictionary) -> bool:
 	if def.get("potion", {}).get("kind", "") == "heal":
 		return int(r.get("potions_used", 0)) > 0
 	return true
-
-
-static func _killer_of(r: Dictionary) -> String:
-	for i in range(r.events.size() - 1, -1, -1):
-		if r.events[i].type == "death":
-			return r.events[i].get("killer", "")
-	return ""
 
 
 static func result_for(st: GameState, hero_uid: String) -> Dictionary:
@@ -385,14 +440,12 @@ static func end_day(db: ContentDB, st: GameState) -> Dictionary:
 		else:
 			out.lost = true
 	if is_boss_day(db, st) and not out.lost:
-		var won := false
-		for r in st.results:
-			if r.get("boss_killed", false):
-				won = true
+		var won: bool = st.delve.get("boss_killed", false)
 		out.won = won
 		out.lost = not won
 	st.counter.clear()
 	st.results.clear()
+	st.delve = {}
 	st.picks_left.clear()
 	st.merchant_stock.clear()  # the merchant moves on at nightfall
 	if out.won:

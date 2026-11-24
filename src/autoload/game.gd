@@ -54,8 +54,8 @@ func buy(offer_index: int) -> String:
 	return err
 
 
-func lend(hero_uid: String, gear_uids: Array, floor_index: int) -> String:
-	var err := Season.lend(db, state, hero_uid, gear_uids, floor_index)
+func lend(hero_uid: String, gear_uids: Array) -> String:
+	var err := Season.lend(db, state, hero_uid, gear_uids)
 	if err == "":
 		Platform.unlock("first_loan")
 		Events.gear_lent.emit(hero_uid)
@@ -66,8 +66,21 @@ func turn_away(hero_uid: String) -> void:
 	Season.turn_away(state, hero_uid)
 
 
-func estimate(hero_uid: String, gear: Array, floor_index: int) -> Dictionary:
+func set_delve_floor(floor_index: int) -> String:
+	return Season.set_delve_floor(db, state, floor_index)
+
+
+func move_in_party(hero_uid: String, new_index: int) -> String:
+	return Season.move_in_party(state, hero_uid, new_index)
+
+
+## This hero's survival read with this kit, fighting alongside today's party.
+func estimate(hero_uid: String, gear: Array, floor_index: int = -1) -> Dictionary:
 	return Season.estimate_loan(db, state, hero_uid, gear, floor_index)
+
+
+func estimate_party(floor_index: int = -1) -> Dictionary:
+	return Season.estimate_party(db, state, floor_index)
 
 
 func send_delves() -> void:

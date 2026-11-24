@@ -41,7 +41,7 @@ Everything in `src/core` and `src/sim` is plain code over Dictionaries, with no 
 
 ## Determinism
 
-All randomness in rules goes through `Rng`, seeded from the season seed plus labels (`Rng.derive(seed, ["delve", day, hero_uid])`). Never use the global `randf()`/`randi()` in `core/` or `sim/` (cosmetic randomness in juice is fine). Saves keep dictionary order (`sort_keys = false`) so a reloaded season continues identically. Tests check that the same seed gives the same run and the same whole season.
+All randomness in rules goes through `Rng`, seeded from the season seed plus labels (`Rng.derive(seed, ["delve", day])`). Never use the global `randf()`/`randi()` in `core/` or `sim/` (cosmetic randomness in juice is fine). Saves keep dictionary order (`sort_keys = false`) so a reloaded season continues identically. Tests check that the same seed gives the same run and the same whole season.
 
 If you change simulation rules, bump `RunSimulator.SIM_VERSION`. Saved event logs still play back because they are stored, not re-simulated.
 
@@ -73,6 +73,15 @@ Export templates are not committed. Install them from the editor (Editor → Man
 You keep a party of up to 4 heroes (`balance.json` → `party`). Day 1 brings 4 walk-ins; the ones you kit out join, the rest leave for the tavern. Each later morning there is a chance of one walk-in (one is guaranteed per empty seat). Taking a walk-in into a full party means letting someone go; they go to the tavern and may walk in again later, keeping their level. Party members you don't kit out rest that day. Every hero has one trait, rolled Common / Uncommon / Rare (`trait_rarity_weights`), affecting stats, gold, materials, mod finds or potions.
 
 Potions go in a fourth "pack" slot and are sold by the merchant. Run-long potions (Haste Tonic, Courage Draught) are used up every run; a Healing Draught is drunk automatically at low HP and only used up if drunk.
+
+## The party delves together
+
+Each day you choose one floor and the whole kitted party (up to four) walks it together, fighting every room side by side. On screen the party stands in a vertical stack on the left, slot 1 on top; monsters line up in the same rows on the right and attackers lunge across the gap (archers and casters shoot instead).
+
+- **Slots matter.** Monsters and traps pick a victim weighted by slot (`combat.aggro_by_slot`, default 4/3/2/2), so put your tank on top. Each hero fights the monster in their own row, or the nearest one left.
+- **Bigger party, bigger fights.** Each hero past the first adds `combat.party_extra_monsters` to the group roll (max `combat.max_monsters`), and the boss gains `combat.boss_hp_per_hero` of its HP per extra hero.
+- **Everyone has their own fate.** A hero can die, or lose their nerve and head home, while the rest press on. The killer keeps a monster's drops; chests are split (`rooms.treasure_per_extra_hero` makes a full party find a bit more in total). Priests heal the worst-hurt ally once a fight. Each survivor still lays out their own haul at dusk.
+- The run's outcome is `cleared` (someone finished), `retreated` (everyone left alive went home early) or `wiped`.
 
 ## Combat timing (Haste)
 

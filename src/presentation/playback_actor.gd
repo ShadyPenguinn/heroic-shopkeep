@@ -5,6 +5,7 @@ extends Node2D
 ## playback code is identical before and after art lands.
 
 const PLACEHOLDER_SIZE := Vector2(14, 22)
+const LUNGE_REACH := 0.4   # fraction of the gap a melee attacker covers
 
 var key := ""
 var display_name := ""
@@ -13,6 +14,8 @@ var max_hp := 1
 var facing_left := false
 var color := Color(0.6, 0.8, 1.0)
 var dead := false
+var gone := false   # walked off (retreated)
+var ranged := false # shoots instead of lunging
 var meter := 0.0   # action meter 0..100, drawn under the HP bar
 
 var _sprite: AnimatedSprite2D
@@ -72,13 +75,33 @@ func body() -> Node2D:
 	return _body
 
 
-func play_attack(duration: float) -> void:
+## Lunges part of the way toward `target_pos` (a sibling position) and back.
+## Ranged units only lean in a little; their projectile does the travelling.
+func play_attack(duration: float, target_pos: Variant = null) -> void:
 	_play("attack")
 	var dir := -1.0 if facing_left else 1.0
+	var offset := Vector2(10 * dir, 0)
+	if target_pos is Vector2 and not ranged:
+		offset = ((target_pos as Vector2) - _home) * LUNGE_REACH
+	elif ranged:
+		offset = Vector2(-4 * dir, 0)  # draw back the bow
 	var t := create_tween()
-	t.tween_property(self, "position", _home + Vector2(10 * dir, 0), duration * 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(self, "position", _home + offset, duration * 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	t.tween_property(self, "position", _home, duration * 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-	t.tween_callback(func(): _play("idle"))
+	t.tween_callback(func(): if not dead: _play("idle"))
+
+
+## Turns tail and walks off the stage.
+func play_retreat(duration: float) -> void:
+	gone = true
+	if _sprite:
+		_sprite.flip_h = not facing_left
+	_play("walk")
+	var dir := 1.0 if facing_left else -1.0
+	var t := create_tween()
+	t.tween_property(self, "position", _home + Vector2(90 * dir, 0), duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.parallel().tween_property(self, "modulate:a", 0.0, duration)
+	queue_redraw()
 
 
 func play_hurt() -> void:
@@ -124,7 +147,7 @@ func _play(anim: String) -> void:
 
 func _draw() -> void:
 	# HP bar above the head
-	if dead:
+	if dead or gone:
 		return
 	var w := 20.0
 	var y := -PLACEHOLDER_SIZE.y - 8.0
