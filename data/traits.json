@@ -1,0 +1,14 @@
+[
+  {"id": "reckless",    "name": "Reckless",    "desc": "Pushes on when hurt. Brings back more.",          "effects": {"nerve_threshold": -0.2, "loot_mult": 1.25}},
+  {"id": "cautious",    "name": "Cautious",    "desc": "Turns back early. Hard to hit.",                  "effects": {"nerve_threshold": 0.15, "guard": 1}},
+  {"id": "greedy",      "name": "Greedy",      "desc": "Hides the best card from the haul.",              "effects": {"hide_best_card": true}},
+  {"id": "loyal",       "name": "Loyal",       "desc": "Shows one extra card. Bonds faster.",             "effects": {"extra_cards": 1, "bond_mult": 2.0}},
+  {"id": "glory_hound", "name": "Glory-hound", "desc": "Always goes one floor deeper than agreed.",       "effects": {"depth_bonus": 1}},
+  {"id": "lucky",       "name": "Lucky",       "desc": "Things just work out.",                           "effects": {"luck": 3}},
+  {"id": "cowardly",    "name": "Cowardly",    "desc": "Runs at the first scratch.",                      "effects": {"nerve_threshold": 0.25}},
+  {"id": "collector",   "name": "Collector",   "desc": "Treats your gear gently.",                        "effects": {"wear_mult": 0.5}},
+  {"id": "brawler",     "name": "Brawler",     "desc": "Hits hard, guards poorly.",                       "effects": {"might": 2, "guard": -1}},
+  {"id": "tough",       "name": "Tough",       "desc": "Takes a beating.",                                "effects": {"hp": 10}},
+  {"id": "sharp_eyed",  "name": "Sharp-eyed",  "desc": "Finds the weak spot.",                            "effects": {"crit": 0.08}},
+  {"id": "scholar",     "name": "Scholar",     "desc": "Learns fast, bruises easily.",                    "effects": {"xp_mult": 1.5, "hp": -4}}
+]

@@ -1,0 +1,10 @@
+[
+  {"id": "soldier",   "name": "Soldier",   "sprite": "Soldier",        "role": "front",  "weapons": ["blade", "spear"], "hp": 34, "might": 5, "guard": 3, "nerve": 3, "luck": 2, "block": 0.15},
+  {"id": "swordsman", "name": "Swordsman", "sprite": "Swordsman",      "role": "front",  "weapons": ["blade"],          "hp": 30, "might": 7, "guard": 2, "nerve": 3, "luck": 3, "block": 0.10},
+  {"id": "knight",    "name": "Knight",    "sprite": "Knight",         "role": "front",  "weapons": ["blade"],          "hp": 40, "might": 5, "guard": 5, "nerve": 4, "luck": 1, "block": 0.25},
+  {"id": "lancer",    "name": "Lancer",    "sprite": "Lancer",         "role": "front",  "weapons": ["spear"],          "hp": 32, "might": 6, "guard": 3, "nerve": 2, "luck": 3, "block": 0.10},
+  {"id": "archer",    "name": "Archer",    "sprite": "Archer",         "role": "ranged", "weapons": ["bow"],            "hp": 24, "might": 6, "guard": 1, "nerve": 2, "luck": 5, "block": 0.0},
+  {"id": "wizard",    "name": "Wizard",    "sprite": "Wizard",         "role": "caster", "weapons": ["staff"],          "hp": 22, "might": 8, "guard": 1, "nerve": 2, "luck": 3, "block": 0.0},
+  {"id": "priest",    "name": "Priest",    "sprite": "Priest",         "role": "healer", "weapons": ["staff"],          "hp": 26, "might": 4, "guard": 2, "nerve": 4, "luck": 3, "block": 0.05},
+  {"id": "axeman",    "name": "Axeman",    "sprite": "Armored Axeman", "role": "front",  "weapons": ["axe"],            "hp": 38, "might": 7, "guard": 4, "nerve": 3, "luck": 1, "block": 0.05}
+]
