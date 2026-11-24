@@ -1,4 +1,4 @@
-# Lending Shop (working title)
+# Heroic Shopkeep
 
 A dungeon lending-shop sim: lend gear to adventurers, watch their runs play out, take one card from each survivor's haul. Built in **Godot 4.7.2** (GDScript, Compatibility renderer). Ships on itch.io first, then Steam, and is set up so other stores can be added without touching game code.
 
