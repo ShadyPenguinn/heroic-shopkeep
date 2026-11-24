@@ -1,11 +1,13 @@
 extends Node2D
-## Dev sandbox: roll a hero, pick gear and a floor, see the survival estimate,
-## then watch the seeded run play back. Use it to feel out combat and juice
+## Dev sandbox: roll a party, pick gear and a floor, see the survival estimate,
+## then watch the seeded run play back. The class picker sets the top hero;
+## the rest of the party is rolled at random. Use it to feel out combat and juice
 ## before the real counter screen exists. Not shipped in release menus.
 
 var db: ContentDB
 var rng := Rng.new(Rng.derive(1, ["sandbox"]))
-var hero: Dictionary = {}
+var hero: Dictionary = {}      # the top of the stack
+var party: Array = []          # every hero, slot order (party[0] == hero)
 var seed_value := 1
 var uid := 0
 
@@ -13,6 +15,7 @@ var playback: RunPlayback
 var _class_opt: OptionButton
 var _tier_opt: OptionButton
 var _floor_spin: SpinBox
+var _party_spin: SpinBox
 var _element_opt: OptionButton
 var _action_opt: OptionButton
 var _hero_label: Label
@@ -28,14 +31,8 @@ func _ready() -> void:
 	cam.make_current()
 	Juice.register_camera(cam)
 
-	var floor_line := Line2D.new()
-	floor_line.points = [Vector2(-120, 32), Vector2(320, 32)]
-	floor_line.width = 1
-	floor_line.default_color = Color(0.35, 0.28, 0.3)
-	add_child(floor_line)
-
 	playback = RunPlayback.new()
-	playback.position = Vector2(110, 0)
+	playback.position = Vector2(150, -45)
 	add_child(playback)
 	playback.event_shown.connect(_on_event)
 	playback.finished.connect(func(_r): _delve_btn.disabled = false)
@@ -72,6 +69,13 @@ func _build_ui() -> void:
 	_floor_spin.max_value = db.floor_count()
 	_floor_spin.value = 1
 	fh.add_child(_floor_spin)
+	_label(fh, " Party")
+	_party_spin = SpinBox.new()
+	_party_spin.min_value = 1
+	_party_spin.max_value = 4
+	_party_spin.value = 4
+	_party_spin.value_changed.connect(func(_v): _new_hero())
+	fh.add_child(_party_spin)
 	v.add_child(fh)
 
 	_hero_label = _label(v, "")
@@ -104,8 +108,11 @@ func _build_ui() -> void:
 
 
 func _new_hero() -> void:
-	uid += 1
-	hero = Hero.create(db, rng, "sandbox%d" % uid)
+	party.clear()
+	for i in int(_party_spin.value):
+		uid += 1
+		party.append(Hero.create(db, rng, "sandbox%d" % uid))
+	hero = party[0]
 	_class_opt.select(db.ids("classes").find(hero.class_id))
 	_refresh_hero()
 
@@ -120,15 +127,26 @@ func _refresh_hero() -> void:
 	var traits: Array = []
 	for t in hero.traits:
 		traits.append("%s (%s)" % [db.get_row("traits", t).name, db.get_row("traits", t).get("rarity", "")])
-	_hero_label.text = "%s\nLv %d  HP %d  Might %d  Guard %d\nHaste %d  Nerve %d  Luck %d  Retreats < %d%%\n%s" % [
+	var others: Array = []
+	for i in range(1, party.size()):
+		others.append("%d. %s" % [i + 1, Hero.display_name(db, party[i])])
+	_hero_label.text = "1. %s\nLv %d  HP %d  Might %d  Guard %d\nHaste %d  Nerve %d  Luck %d  Retreats < %d%%\n%s\n%s" % [
 		Hero.display_name(db, hero), hero.level, s.max_hp, s.might, s.guard, s.haste, s.nerve, s.luck,
-		roundi(s.nerve_threshold * 100), ", ".join(traits)]
+		roundi(s.nerve_threshold * 100), ", ".join(traits), "\n".join(others)]
 	_estimate_label.text = ""
 
 
-func _gear() -> Array:
+func _members() -> Array:
+	var out: Array = []
+	for h in party:
+		out.append({"hero": h, "gear": _gear(h)})
+	return out
+
+
+func _gear(for_hero: Dictionary = {}) -> Array:
+	var h: Dictionary = for_hero if not for_hero.is_empty() else hero
 	var tier := _tier_opt.selected + 1
-	var kinds: Array = db.get_row("classes", hero.get("class_id", "")).get("weapons", [])
+	var kinds: Array = db.get_row("classes", h.get("class_id", "")).get("weapons", [])
 	var gear: Array = []
 	var picks := {}
 	for it in db.rows("items"):
@@ -151,25 +169,29 @@ func _gear() -> Array:
 
 func _estimate() -> void:
 	var t0 := Time.get_ticks_usec()
-	var est := SurvivalEstimator.estimate(db, hero, _gear(), int(_floor_spin.value), Rng.derive(seed_value, ["sandbox-est"]))
+	var est := SurvivalEstimator.estimate_party(db, _members(), int(_floor_spin.value), Rng.derive(seed_value, ["sandbox-est"]))
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
-	_estimate_label.text = "%s: %d%% death (%d-%d%%), %d%% retreat\nbest card ~%d gold  [%d sims, %.0f ms]" % [
-		str(est.band).to_upper(), roundi(est.death_rate * 100), roundi(est.death_low * 100), roundi(est.death_high * 100),
-		roundi(est.retreat_rate * 100), roundi(est.avg_best_card), est.samples, ms]
+	var deaths: Array = []
+	for h in party:
+		deaths.append("%d%%" % roundi(est.heroes[h.uid].death_rate * 100))
+	_estimate_label.text = "%s: deaths by slot %s, wipe %d%%\n[%d sims, %.0f ms]" % [
+		str(est.band).to_upper(), " / ".join(deaths), roundi(est.wipe_rate * 100), est.samples, ms]
 	Juice.pop(_estimate_label, 0.1)
 
 
 func _delve() -> void:
 	seed_value += 1
 	_log.clear()
-	var result := RunSimulator.simulate(db, hero, _gear(), int(_floor_spin.value), seed_value)
+	var result := RunSimulator.simulate_party(db, _members(), int(_floor_spin.value), seed_value)
 	_log.append_text("[b]Seed %d[/b], floor %d, %d rooms\n" % [seed_value, result.floor, result.rooms])
 	_delve_btn.disabled = true
-	await playback.play(result, hero, db)
-	var haul: Array = []
-	for c in result.haul:
-		haul.append(_card_text(c))
-	_log.append_text("[b]%s[/b]. Haul: %s\n" % [str(result.outcome).capitalize(), ", ".join(haul) if not haul.is_empty() else "nothing"])
+	await playback.play(result, party, db)
+	_log.append_text("[b]%s[/b]\n" % str(result.outcome).capitalize())
+	for r in result.heroes:
+		var haul: Array = []
+		for c in r.haul:
+			haul.append(_card_text(c))
+		_log.append_text("  %d. %s: %s. Haul: %s\n" % [int(r.slot) + 1, party[r.slot].name, r.outcome, ", ".join(haul) if not haul.is_empty() else "nothing"])
 
 
 func _on_event(ev: Dictionary) -> void:

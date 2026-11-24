@@ -15,11 +15,14 @@ func test_a_full_day(t: TestContext) -> void:
 	t.ok(st.counter.size() >= 2, "heroes at the counter")
 	var hero_uid: String = st.counter[0]
 	var sword: Dictionary = st.inventory[0]
-	t.eq(Season.lend(db, st, hero_uid, [sword.uid], 1), "", "lend")
+	t.eq(Season.lend(db, st, hero_uid, [sword.uid]), "", "lend")
 	t.ok(st.find_gear(sword.uid).is_empty(), "lent gear leaves the racks")
-	t.ok(Season.lend(db, st, hero_uid, [st.inventory[0].uid, st.inventory[1].uid], 1) != "", "two weapons rejected")
+	t.ok(Season.lend(db, st, hero_uid, [st.inventory[0].uid, st.inventory[1].uid]) != "", "two weapons rejected")
+	t.ok(Season.set_delve_floor(db, st, 99) != "", "no such floor")
+	t.eq(Season.set_delve_floor(db, st, 1), "", "pick a floor")
 	Season.send_delves(db, st)
 	t.eq(st.results.size(), 1, "one delve")
+	t.ok(not st.delve.get("events", []).is_empty(), "the party run is kept for playback")
 	var report := Season.begin_dusk(db, st)
 	var r: Dictionary = st.results[0]
 	if r.outcome == "died":
@@ -156,8 +159,8 @@ func test_day_one_four_walk_ins_unkitted_leave(t: TestContext) -> void:
 	for g in st.inventory:
 		if Gear.def_of(db, g).slot == "weapon":
 			weapons.append(g.uid)
-	t.eq(Season.lend(db, st, st.candidates[0], [weapons[0]], 1), "", "kit out first")
-	t.eq(Season.lend(db, st, st.candidates[1], [weapons[1]], 1), "", "kit out second")
+	t.eq(Season.lend(db, st, st.candidates[0], [weapons[0]]), "", "kit out first")
+	t.eq(Season.lend(db, st, st.candidates[1], [weapons[1]]), "", "kit out second")
 	t.eq(st.party.size(), 2, "kitted walk-ins join")
 	var left: String = st.candidates[3]
 	Season.send_delves(db, st)
@@ -183,10 +186,10 @@ func test_full_party_must_let_someone_go(t: TestContext) -> void:
 	t.eq(st.candidates.size(), 1, "only one walk-in when the party is full")
 	var cand: String = st.candidates[0]
 	var sword: String = st.inventory[0].uid
-	t.ok(Season.lend(db, st, cand, [sword], 1) != "", "full party blocks the walk-in")
+	t.ok(Season.lend(db, st, cand, [sword]) != "", "full party blocks the walk-in")
 	var leaving: String = st.party[0]
 	t.eq(Season.dismiss(st, leaving), "", "let someone go")
-	t.eq(Season.lend(db, st, cand, [sword], 1), "", "now the walk-in can join")
+	t.eq(Season.lend(db, st, cand, [sword]), "", "now the walk-in can join")
 	t.ok(st.party.has(cand) and st.tavern.has(leaving), "swap done")
 
 
@@ -223,3 +226,37 @@ func test_potions(t: TestContext) -> void:
 					seen = true
 			t.ok(seen, "potion shows in the log")
 	t.ok(drank > 0, "heroes drink healing draughts when hurt")
+
+
+func test_the_party_delves_together(t: TestContext) -> void:
+	var st := Season.new_game(db, 31)
+	Season.start_day(db, st)
+	var weapons: Array = []
+	for g in st.inventory:
+		if Gear.def_of(db, g).slot == "weapon":
+			weapons.append(g.uid)
+	var kitted := mini(3, weapons.size())
+	for i in kitted:
+		t.eq(Season.lend(db, st, st.candidates[i], [weapons[i]]), "", "kit %d" % i)
+	var bottom: String = st.party[kitted - 1]
+	t.eq(Season.move_in_party(st, bottom, 0), "", "reorder")
+	t.eq(Season.delving_party(st)[0], bottom, "moved to the top of the stack")
+	Season.set_delve_floor(db, st, 2)
+	Season.send_delves(db, st)
+	t.eq(st.results.size(), kitted, "one result per hero, from one run")
+	t.eq(st.results[0].hero_uid, bottom, "results follow slot order")
+	t.eq(int(st.delve.floor), 2, "everyone went to the same floor")
+	t.eq(st.delve.party["h0"], bottom, "playback knows who is who")
+	var est := Season.estimate_party(db, st, 2, 20)
+	t.eq(est.heroes.size(), kitted, "estimate covers the party")
+
+
+func test_old_save_migrates(t: TestContext) -> void:
+	var st := Season.new_game(db, 32)
+	var d := st.to_dict()
+	d.save_version = 1
+	d.erase("delve_floor")
+	d.loans = [{"hero": "h1", "gear": [], "floor": 3}, {"hero": "h2", "gear": [], "floor": 2}]
+	var back := GameState.from_dict(d)
+	t.eq(back.delve_floor, 3, "deepest old loan floor becomes the party floor")
+	t.ok(not back.loans[0].has("floor"), "loans lose their floor")

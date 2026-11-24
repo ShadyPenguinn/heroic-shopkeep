@@ -19,7 +19,7 @@ func _ready() -> void:
 	cam.make_current()
 	Juice.register_camera(cam)
 	playback = RunPlayback.new()
-	playback.position = Vector2(60, -10)
+	playback.position = Vector2(80, -10)
 	add_child(playback)
 
 	var layer := CanvasLayer.new()
@@ -91,16 +91,22 @@ func _on_advance() -> void:
 			for uid in before_party:
 				if not st.party.has(uid):
 					_say("  Let %s go to make room." % st.roster[uid].name)
-			for loan in st.loans:
+			_say("  The party heads to floor %d:" % st.delve_floor)
+			var slot := 1
+			for uid in Season.delving_party(st):
 				var names: Array = []
-				for g in loan.gear:
+				for g in Season.loan_for(st, uid).gear:
 					names.append(Gear.display_name(db, g))
-				_say("  %s -> floor %d with %s" % [st.roster[loan.hero].name, loan.floor, ", ".join(names)])
+				_say("  %d. %s with %s" % [slot, st.roster[uid].name, ", ".join(names)])
+				slot += 1
 			Game.send_delves()
 		GameState.Phase.DELVE:
-			for r in st.results:
-				_say("Watching %s..." % st.roster[r.hero_uid].name)
-				await playback.play(r, st.roster[r.hero_uid], db)
+			if not st.delve.is_empty():
+				var heroes: Array = []
+				for r in st.results:
+					heroes.append(st.roster[r.hero_uid])
+				_say("Watching the party...")
+				await playback.play(st.delve, heroes, db)
 			var report := Game.begin_dusk()
 			for e in report:
 				var line := "  %s: %s" % [st.roster[e.hero].name, e.outcome]

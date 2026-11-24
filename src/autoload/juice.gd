@@ -179,8 +179,12 @@ func popup(parent: Node, pos: Vector2, text: String, color: Color = Color.WHITE,
 
 
 func _take_popup() -> Label:
-	if not _popup_pool.is_empty():
-		return _popup_pool.pop_back()
+	# Pooled labels live under whatever node last showed them, so a freed scene
+	# can take some with it: skip those.
+	while not _popup_pool.is_empty():
+		var pooled: Variant = _popup_pool.pop_back()
+		if is_instance_valid(pooled) and not pooled.is_queued_for_deletion():
+			return pooled
 	var l := Label.new()
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.add_theme_constant_override("outline_size", 4)
@@ -189,6 +193,8 @@ func _take_popup() -> Label:
 
 
 func _return_popup(label: Label) -> void:
+	if not is_instance_valid(label) or label.is_queued_for_deletion():
+		return
 	label.visible = false
 	if _popup_pool.size() < POPUP_POOL_SIZE:
 		_popup_pool.append(label)

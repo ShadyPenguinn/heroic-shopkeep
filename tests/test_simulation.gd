@@ -39,7 +39,7 @@ func test_event_log_is_well_formed(t: TestContext) -> void:
 		var r := RunSimulator.simulate(db, _hero("wizard"), gear, 3, s)
 		t.eq(r.events[0].type, "run_start", "first event")
 		t.eq(r.events[-1].type, "run_end", "last event")
-		t.eq(r.events[-1].outcome, r.outcome, "run_end outcome")
+		t.eq(r.events[-1].outcome, r.party_outcome, "run_end outcome")
 		if r.outcome == "died":
 			t.ok(r.haul.is_empty(), "the dead bring nothing back")
 			t.eq(r.events[-2].type, "death", "death before run_end")
@@ -121,7 +121,7 @@ func test_haste_means_more_actions(t: TestContext) -> void:
 				g2[0].mods = ["quicksilver", "quicksilver", "quicksilver"]
 				r = RunSimulator.simulate(db, hh, g2, 2, sd)
 			for ev in r.events:
-				if ev.type in ["attack", "miss"] and ev.get("tag", "") == "" and ev.actor == "hero":
+				if ev.type in ["attack", "miss"] and ev.get("tag", "") == "" and ev.actor == "h0":
 					hero_acts += 1
 				elif ev.type in ["hit", "block", "dodge"]:
 					monster_acts += 1
@@ -134,6 +134,71 @@ func test_meters_in_log(t: TestContext) -> void:
 	var found := false
 	for ev in r.events:
 		if ev.type == "attack":
-			found = ev.has("meters") and ev.has("tick") and ev.meters.has("hero")
+			found = ev.has("meters") and ev.has("tick") and ev.meters.has("h0")
 			break
 	t.ok(found, "attack events carry tick and meter snapshot for playback")
+
+
+func _party(classes: Array) -> Array:
+	var members: Array = []
+	for i in classes.size():
+		var h := _hero(classes[i])
+		h.uid = "p%d" % i
+		members.append({"hero": h, "gear": _kit(["iron_sword", "leather_vest"])})
+	return members
+
+
+func test_party_fights_together(t: TestContext) -> void:
+	var members := _party(["knight", "swordsman", "archer", "priest"])
+	var r := RunSimulator.simulate_party(db, members, 2, 11)
+	t.eq(r.heroes.size(), 4, "one result per hero")
+	t.eq(r.events[0].party.size(), 4, "run_start lists the party")
+	var attackers := {}
+	for ev in r.events:
+		if ev.type == "attack":
+			attackers[ev.actor] = true
+	t.ok(attackers.size() >= 3, "several heroes swing in the same run (%s)" % str(attackers.keys()))
+	t.eq(r.events[-1].type, "run_end", "last event")
+
+
+func test_party_same_seed_and_quick_sim_match(t: TestContext) -> void:
+	var members := _party(["knight", "wizard", "lancer"])
+	for s in 60:
+		var a := RunSimulator.simulate_party(db, members, 3, s)
+		var b := RunSimulator.simulate_party(db, members, 3, s)
+		var q := RunSimulator.simulate_party(db, members, 3, s, {"record_events": false})
+		t.eq(JSON.stringify(a), JSON.stringify(b), "seed %d deterministic" % s)
+		for i in a.heroes.size():
+			t.eq(q.heroes[i].outcome, a.heroes[i].outcome, "seed %d hero %d outcome" % [s, i])
+			t.eq(q.heroes[i].hp_left, a.heroes[i].hp_left, "seed %d hero %d hp" % [s, i])
+		if not t.failures.is_empty():
+			return
+
+
+func test_top_of_the_stack_draws_more_attacks(t: TestContext) -> void:
+	var members := _party(["knight", "knight", "knight", "knight"])
+	var hits := {"h0": 0, "h3": 0}
+	for s in 100:
+		for ev in RunSimulator.simulate_party(db, members, 2, s).events:
+			if ev.type in ["hit", "block", "dodge"] and hits.has(ev.target):
+				hits[ev.target] += 1
+	t.ok(hits.h0 > hits.h3 * 1.4, "slot 1 should be attacked clearly more than slot 4 (%s)" % str(hits))
+
+
+func test_party_is_safer_than_going_alone(t: TestContext) -> void:
+	var solo := SurvivalEstimator.estimate(db, _party(["swordsman"])[0].hero, _kit(["iron_sword", "leather_vest"]), 3, 4, 300)
+	var group := SurvivalEstimator.estimate_party(db, _party(["knight", "swordsman", "archer", "priest"]), 3, 4, 300)
+	t.ok(group.heroes["p1"].death_rate < solo.death_rate, "a swordsman with friends (%.2f) should die less than alone (%.2f)" % [group.heroes["p1"].death_rate, solo.death_rate])
+
+
+func test_dead_bring_nothing_survivors_bring_haul(t: TestContext) -> void:
+	var members := _party(["swordsman", "wizard", "archer"])
+	for s in 150:
+		var r := RunSimulator.simulate_party(db, members, 4, s)
+		for h in r.heroes:
+			if h.outcome == "died":
+				t.ok(h.haul.is_empty(), "the dead bring nothing back")
+			else:
+				t.ok(h.haul.size() >= 1, "survivors bring a haul")
+		if not t.failures.is_empty():
+			return

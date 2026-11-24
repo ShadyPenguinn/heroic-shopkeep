@@ -78,7 +78,16 @@
     "riposte_mult": 0.5,
     "second_wind_heal": 0.35,
     "healer_heal": 0.25,
-    "panic_factor": 0.6
+    "panic_factor": 0.6,
+    "aggro_by_slot": [
+      4,
+      3,
+      2,
+      2
+    ],
+    "party_extra_monsters": 1.0,
+    "max_monsters": 4,
+    "boss_hp_per_hero": 1.3
   },
   "nerve": {
     "base_threshold": 0.45,
@@ -92,7 +101,8 @@
       0.08,
       0.18
     ],
-    "trap_dodge_per_luck": 0.03
+    "trap_dodge_per_luck": 0.03,
+    "treasure_per_extra_hero": 0.5
   },
   "sell_mult": 0.5,
   "bond": {

@@ -62,8 +62,6 @@ func outfit(db: ContentDB, st: GameState) -> void:
 			Season.dismiss(st, weakest)
 	var heroes: Array = st.counter.duplicate()
 	heroes.sort_custom(func(a, b): return _hero_score(db, st.roster[a]) > _hero_score(db, st.roster[b]))
-	var boss_day := Season.is_boss_day(db, st)
-	var first := true
 	for uid in heroes:
 		if Season.is_candidate(st, uid) and st.party.size() >= Season.party_size(db) and not st.party.has(uid):
 			continue
@@ -74,20 +72,40 @@ func outfit(db: ContentDB, st: GameState) -> void:
 				has_weapon = true
 		if not has_weapon:
 			continue  # rests today (or, for a walk-in, leaves)
-		var floor_index := 1
-		if boss_day and first:
-			floor_index = int(db.bal("boss.floor", 5))
-		else:
-			for f in range(db.floor_count(), 0, -1):
-				var est := Season.estimate_loan(db, st, uid, gear, f, estimate_samples)
-				if est.death_rate <= max_death_risk:
-					floor_index = f
-					break
 		var uids: Array = []
 		for g in gear:
 			uids.append(g.uid)
-		if Season.lend(db, st, uid, uids, floor_index) == "":
-			first = false
+		Season.lend(db, st, uid, uids)
+	_order_party(db, st)
+	# The deepest floor where nobody is likely to die (the boss floor on boss day).
+	var floor_index := 1
+	if Season.is_boss_day(db, st):
+		floor_index = int(db.bal("boss.floor", 5))
+	else:
+		for f in range(db.floor_count(), 0, -1):
+			var est := Season.estimate_party(db, st, f, estimate_samples)
+			var worst := 0.0
+			for uid in est.heroes:
+				worst = maxf(worst, float(est.heroes[uid].death_rate))
+			if worst <= max_death_risk:
+				floor_index = f
+				break
+	Season.set_delve_floor(db, st, floor_index)
+
+
+## Sturdy front-liners on top (they draw the most attacks), archers, casters and healers below.
+func _order_party(db: ContentDB, st: GameState) -> void:
+	var order: Array = st.party.duplicate()
+	var toughness := {}
+	for uid in order:
+		var s := Hero.combat_stats(db, st.roster[uid], Season.loan_for(st, uid).get("gear", []))
+		var t := float(s.max_hp) + float(s.guard) * 6.0
+		if s.role != "front":
+			t -= 1000.0
+		toughness[uid] = t
+	order.sort_custom(func(a, b): return toughness[a] > toughness[b])
+	for i in order.size():
+		Season.move_in_party(st, order[i], i)
 
 
 static func _hero_score(db: ContentDB, hero: Dictionary) -> float:

@@ -6,7 +6,7 @@ extends RefCounted
 ## Save format: to_dict() -> JSON. When the shape changes, bump SAVE_VERSION and
 ## add a step to _migrate() so older saves keep loading.
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 
 enum Phase { MORNING, OUTFIT, DELVE, DUSK, WON, LOST }
 
@@ -25,8 +25,10 @@ var party: Array = []           # hero uids in your party (max balance.party.siz
 var candidates: Array = []      # today's walk-ins (not in the party until you kit them out)
 var tavern: Array = []          # heroes who left or were let go; they may walk in again
 var counter: Array = []         # everyone at the counter today: party + walk-ins
-var loans: Array = []           # [{hero, gear: [gear dicts], floor}] gear is off the racks while lent
-var results: Array = []         # run results for today's delves (kept so a mid-delve save replays)
+var loans: Array = []           # [{hero, gear: [gear dicts]}] gear is off the racks while lent
+var delve_floor := 1            # the floor the whole party heads to today
+var delve: Dictionary = {}      # today's party run (floor, outcome, events) kept so a mid-delve save replays
+var results: Array = []         # today's per-hero results (outcome, haul, xp ...), in party slot order
 var picks_left: Dictionary = {} # hero uid -> cards the player may still take at dusk
 var merchant_stock: Array = []  # [{gear, price}] today's wandering merchant offers (empty when not in town)
 var memorial: Array = []        # [{hero, class_id, day, floor, killer, gear: [gear dicts]}]
@@ -74,6 +76,8 @@ func to_dict() -> Dictionary:
 		"tavern": tavern,
 		"counter": counter,
 		"loans": loans,
+		"delve_floor": delve_floor,
+		"delve": delve,
 		"results": results,
 		"picks_left": picks_left,
 		"merchant_stock": merchant_stock,
@@ -102,6 +106,8 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.tavern = d.get("tavern", [])
 	s.counter = d.get("counter", [])
 	s.loans = d.get("loans", [])
+	s.delve_floor = int(d.get("delve_floor", 1))
+	s.delve = d.get("delve", {})
 	s.results = d.get("results", [])
 	s.picks_left = d.get("picks_left", {})
 	s.merchant_stock = d.get("merchant_stock", [])
@@ -145,15 +151,23 @@ static func _fix_json_numbers(s: GameState) -> void:
 		var kc: Dictionary = h.get("kill_counts", {})
 		for m in kc.keys():
 			kc[m] = int(kc[m])
-	for loan in s.loans:
-		loan.floor = int(loan.get("floor", 1))
+	for r in s.results:
+		r.slot = int(r.get("slot", 0))
 
 
 static func _migrate(d: Dictionary) -> Dictionary:
 	var v := int(d.get("save_version", 1))
-	# Example for the future:
-	# if v < 2:
-	#     d["new_field"] = default
-	#     v = 2
+	if v < 2:
+		# The party delves one floor together; loans no longer carry a floor.
+		var deepest := 1
+		for loan in d.get("loans", []):
+			deepest = maxi(deepest, int(loan.get("floor", 1)))
+			loan.erase("floor")
+		d["delve_floor"] = deepest
+		d["delve"] = {}
+		if str(d.get("phase", "")) == "DELVE":
+			d["phase"] = "OUTFIT"  # solo results can't be replayed as a party run: send them again
+			d["results"] = []
+		v = 2
 	d["save_version"] = v
 	return d
