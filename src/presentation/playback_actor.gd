@@ -21,6 +21,7 @@ var meter := 0.0   # action meter 0..100, drawn under the HP bar
 var _sprite: AnimatedSprite2D
 var _body: Node2D       # what flashes and squashes (sprite or placeholder)
 var _home := Vector2.ZERO
+var _name_tag: Label
 
 
 func setup(actor_key: String, sprite_key: String, label: String, start_hp: int, start_max_hp: int, left: bool, tint: Color) -> void:
@@ -46,6 +47,18 @@ func setup(actor_key: String, sprite_key: String, label: String, start_hp: int, 
 		add_child(_body)
 		_body.draw.connect(_draw_placeholder)
 		_body.queue_redraw()
+	var tag := Label.new()
+	tag.text = label
+	tag.add_theme_font_size_override("font_size", 8)
+	tag.add_theme_color_override("font_color", Color(0.85, 0.8, 0.75, 0.8))
+	tag.add_theme_constant_override("outline_size", 3)
+	tag.add_theme_color_override("font_outline_color", Color(0.05, 0.03, 0.06))
+	tag.size = Vector2(80, 10)
+	tag.position = Vector2(-40, 1)
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(tag)
+	_name_tag = tag
 	queue_redraw()
 
 
