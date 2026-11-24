@@ -145,3 +145,81 @@ func test_merchant_stock_improves_over_season(t: TestContext) -> void:
 				else:
 					late += tier
 	t.ok(late > early * 1.3, "week 4 stock should be clearly better (%.0f vs %.0f)" % [late, early])
+
+
+func test_day_one_four_walk_ins_unkitted_leave(t: TestContext) -> void:
+	var st := Season.new_game(db, 21)
+	Season.start_day(db, st)
+	t.eq(st.candidates.size(), 4, "four walk-ins on day 1")
+	t.eq(st.party.size(), 0, "nobody has joined yet")
+	var weapons: Array = []
+	for g in st.inventory:
+		if Gear.def_of(db, g).slot == "weapon":
+			weapons.append(g.uid)
+	t.eq(Season.lend(db, st, st.candidates[0], [weapons[0]], 1), "", "kit out first")
+	t.eq(Season.lend(db, st, st.candidates[1], [weapons[1]], 1), "", "kit out second")
+	t.eq(st.party.size(), 2, "kitted walk-ins join")
+	var left: String = st.candidates[3]
+	Season.send_delves(db, st)
+	t.ok(st.tavern.has(left), "un-kitted walk-in goes to the tavern")
+	t.ok(not st.party.has(left), "and is not in the party")
+
+
+func test_full_party_must_let_someone_go(t: TestContext) -> void:
+	var st := Season.new_game(db, 22)
+	for i in 4:
+		var h := Hero.create(db, Rng.new(i), st.new_uid("h"))
+		st.roster[h.uid] = h
+		st.party.append(h.uid)
+	var found := false
+	for d in range(2, 30):
+		st.day = d
+		st.phase = GameState.Phase.MORNING
+		Season.start_day(db, st)
+		if not st.candidates.is_empty():
+			found = true
+			break
+	t.ok(found, "a walk-in eventually shows up")
+	t.eq(st.candidates.size(), 1, "only one walk-in when the party is full")
+	var cand: String = st.candidates[0]
+	var sword: String = st.inventory[0].uid
+	t.ok(Season.lend(db, st, cand, [sword], 1) != "", "full party blocks the walk-in")
+	var leaving: String = st.party[0]
+	t.eq(Season.dismiss(st, leaving), "", "let someone go")
+	t.eq(Season.lend(db, st, cand, [sword], 1), "", "now the walk-in can join")
+	t.ok(st.party.has(cand) and st.tavern.has(leaving), "swap done")
+
+
+func test_every_hero_has_one_rarity_trait(t: TestContext) -> void:
+	var counts := {"common": 0, "uncommon": 0, "rare": 0}
+	var rng := Rng.new(5)
+	for i in 400:
+		var h := Hero.create(db, rng, "x%d" % i)
+		t.eq(h.traits.size(), 1, "one trait")
+		counts[Hero.trait_rarity(db, h)] += 1
+	t.ok(counts.common > counts.uncommon and counts.uncommon > counts.rare and counts.rare > 0, "rarity spread %s" % str(counts))
+
+
+func test_potions(t: TestContext) -> void:
+	var h := Hero.create(db, Rng.new(1), "p")
+	h.traits = []
+	h.class_id = "knight"
+	var sword := Gear.create(db, "iron_sword", "s")
+	var base := Hero.combat_stats(db, h, [sword])
+	var tonic := Hero.combat_stats(db, h, [sword, Gear.create(db, "haste_tonic", "t")])
+	t.eq(int(tonic.haste), int(base.haste) + 4, "haste tonic")
+	h.traits = ["alchemist"]
+	var strong := Hero.combat_stats(db, h, [sword, Gear.create(db, "haste_tonic", "t")])
+	t.eq(int(strong.haste), int(base.haste) + 6, "alchemist makes it stronger")
+	h.traits = []
+	var drank := 0
+	for sd in 100:
+		var r := RunSimulator.simulate(db, h, [sword, Gear.create(db, "healing_draught", "d")], 3, sd)
+		if r.potions_used > 0:
+			drank += 1
+			var seen := false
+			for ev in r.events:
+				if ev.type == "potion":
+					seen = true
+			t.ok(seen, "potion shows in the log")
+	t.ok(drank > 0, "heroes drink healing draughts when hurt")

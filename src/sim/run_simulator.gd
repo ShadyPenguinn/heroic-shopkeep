@@ -22,7 +22,8 @@ extends RefCounted
 ##   status      {target, status}                     burn|chill|stagger|stun
 ##   status_tick {target, status, dmg, hp}
 ##   skip_turn   {actor, status}                      stunned: the full meter is spent doing nothing
-##   heal        {target, amount, hp, source}         source: rest|prayer|second_wind
+##   heal        {target, amount, hp, source}         source: rest|prayer|second_wind|potion
+##   potion      {item, uses_left}                    the hero drinks a healing draught
 ##   kill        {target, id}
 ##   drop        {material, qty}
 ##   treasure    {gold, mod}
@@ -35,7 +36,7 @@ const SIM_VERSION := 2  # 2: action meters driven by Haste replaced fixed rounds
 const METER_FULL := 100
 ## Events where someone acts carry "tick" and a "meters" snapshot {actor key: 0..99}
 ## so playback can draw action bars that match the simulation.
-const METER_EVENTS: PackedStringArray = ["attack", "hit", "miss", "dodge", "block", "skip_turn", "heal", "status_tick"]
+const METER_EVENTS: PackedStringArray = ["attack", "hit", "miss", "dodge", "block", "skip_turn", "heal", "status_tick", "potion"]
 
 var db: ContentDB
 var rng: Rng
@@ -56,6 +57,7 @@ var floor_def: Dictionary
 var killer := ""
 var boss_killed := false
 var hero_meter := 0
+var potions_used := 0
 var tick := -1   # combat tick, -1 outside fights
 
 
@@ -132,6 +134,7 @@ func _run(content: ContentDB, hero: Dictionary, gear: Array, floor_index: int, s
 		"boss_killed": boss_killed,
 		"xp": 0 if outcome == "died" else roundi(xp * float(s.xp_mult)),
 		"wear": roundi(wear),
+		"potions_used": potions_used,
 		"loot": loot,
 		"haul": [] if outcome == "died" else HaulGenerator.build(db, loot, s, floor_def, rng),
 		"events": events,
@@ -299,6 +302,7 @@ func _monster_attack(m: Dictionary) -> void:
 	damage_taken += dmg
 	hits_taken += 1
 	_emit("hit", {"actor": m.key, "target": "hero", "dmg": dmg, "hp": maxi(hp, 0)})
+	_maybe_drink()
 	if hp <= 0:
 		killer = m.id
 		if s.actions.has("second_wind") and not second_wind_used:
@@ -317,16 +321,16 @@ func _kill(m: Dictionary) -> void:
 	_emit("kill", {"target": m.key, "id": m.id})
 	for d in m.def.get("drops", []):
 		if rng.chance(float(d.get("chance", 0.0))):
-			var qty := roundi(rng.range_arr(d.get("qty", [1, 1])) * float(s.loot_mult))
+			var qty := maxi(1, roundi(rng.range_arr(d.get("qty", [1, 1])) * float(s.material_mult)))
 			var mat: String = d.get("material", "")
 			loot.materials[mat] = int(loot.materials.get(mat, 0)) + qty
 			_emit("drop", {"material": mat, "qty": qty})
 
 
 func _treasure() -> void:
-	var gold := roundi(rng.range_arr(floor_def.get("gold", [1, 5])) * float(s.loot_mult))
+	var gold := roundi(rng.range_arr(floor_def.get("gold", [1, 5])) * float(s.gold_mult))
 	var mod := ""
-	if rng.chance(float(floor_def.get("mod_chance", 0.0))):
+	if rng.chance(float(floor_def.get("mod_chance", 0.0)) * float(s.mod_find_mult)):
 		mod = str(rng.pick(db.ids("mods")))
 		loot.mods.append(mod)
 	loot.gold += gold
@@ -343,6 +347,7 @@ func _trap() -> void:
 	hp -= dmg
 	damage_taken += dmg
 	_emit("trap", {"dmg": dmg, "dodged": false, "hp": maxi(hp, 0)})
+	_maybe_drink()
 	if hp <= 0:
 		killer = "trap"
 
@@ -355,6 +360,17 @@ func _heal(amount: int, source: String) -> void:
 	var before := hp
 	hp = mini(s.max_hp, hp + amount)
 	_emit("heal", {"target": "hero", "amount": hp - before, "hp": hp, "source": source})
+
+
+## A hero carrying a healing draught drinks it when badly hurt (but still standing).
+func _maybe_drink() -> void:
+	if hp <= 0 or potions_used >= int(s.potion_heal_uses):
+		return
+	if float(hp) / s.max_hp >= float(s.potion_heal_below):
+		return
+	potions_used += 1
+	_emit("potion", {"item": s.pack, "uses_left": int(s.potion_heal_uses) - potions_used})
+	_heal(roundi(s.max_hp * float(s.potion_heal)), "potion")
 
 
 func _nerve_breaks() -> bool:

@@ -21,7 +21,10 @@ var inventory: Array = []       # gear on the racks (gear dicts)
 var materials: Dictionary = {}  # material id -> qty
 var mod_stock: Dictionary = {}  # mod id -> qty, mods waiting to be socketed
 var roster: Dictionary = {}     # hero uid -> hero dict, everyone met this season
-var counter: Array = []         # hero uids at the counter today
+var party: Array = []           # hero uids in your party (max balance.party.size)
+var candidates: Array = []      # today's walk-ins (not in the party until you kit them out)
+var tavern: Array = []          # heroes who left or were let go; they may walk in again
+var counter: Array = []         # everyone at the counter today: party + walk-ins
 var loans: Array = []           # [{hero, gear: [gear dicts], floor}] gear is off the racks while lent
 var results: Array = []         # run results for today's delves (kept so a mid-delve save replays)
 var picks_left: Dictionary = {} # hero uid -> cards the player may still take at dusk
@@ -66,6 +69,9 @@ func to_dict() -> Dictionary:
 		"materials": materials,
 		"mod_stock": mod_stock,
 		"roster": roster,
+		"party": party,
+		"candidates": candidates,
+		"tavern": tavern,
 		"counter": counter,
 		"loans": loans,
 		"results": results,
@@ -91,6 +97,9 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.materials = d.get("materials", {})
 	s.mod_stock = d.get("mod_stock", {})
 	s.roster = d.get("roster", {})
+	s.party = d.get("party", [])
+	s.candidates = d.get("candidates", [])
+	s.tavern = d.get("tavern", [])
 	s.counter = d.get("counter", [])
 	s.loans = d.get("loans", [])
 	s.results = d.get("results", [])

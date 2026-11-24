@@ -17,5 +17,11 @@
   {"id": "mythril_plate", "name": "Mythril Plate", "slot": "armor",  "tier": 3, "stats": {"haste": -1, "guard": 7, "hp": 14},             "sockets": 2, "durability": 90, "value": 140, "icon": "mythril_plate"},
   {"id": "lucky_coin",    "name": "Lucky Coin",    "slot": "charm",  "tier": 1, "stats": {"luck": 2},                        "sockets": 1, "durability": 50, "value": 15, "icon": "lucky_coin"},
   {"id": "ward_amulet",   "name": "Ward Amulet",   "slot": "charm",  "tier": 2, "stats": {"nerve": 3, "hp": 4},              "sockets": 2, "durability": 60, "value": 50, "icon": "ward_amulet"},
-  {"id": "mythril_ring",  "name": "Mythril Ring",  "slot": "charm",  "tier": 3, "stats": {"luck": 4, "nerve": 3},            "sockets": 2, "durability": 90, "value": 130, "icon": "mythril_ring"}
+  {"id": "mythril_ring",  "name": "Mythril Ring",  "slot": "charm",  "tier": 3, "stats": {"luck": 4, "nerve": 3},            "sockets": 2, "durability": 90, "value": 130, "icon": "mythril_ring"},
+  {"id": "healing_draught", "name": "Healing Draught", "slot": "pack", "tier": 1, "stats": {}, "sockets": 0, "durability": 1, "value": 18, "icon": "healing_draught",
+   "potion": {"kind": "heal", "amount": 0.4, "below": 0.35}},
+  {"id": "haste_tonic",     "name": "Haste Tonic",     "slot": "pack", "tier": 1, "stats": {}, "sockets": 0, "durability": 1, "value": 15, "icon": "haste_tonic",
+   "potion": {"kind": "haste", "amount": 4}},
+  {"id": "courage_draught", "name": "Courage Draught", "slot": "pack", "tier": 1, "stats": {}, "sockets": 0, "durability": 1, "value": 12, "icon": "courage_draught",
+   "potion": {"kind": "courage", "amount": 0.15}}
 ]

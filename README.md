@@ -64,6 +64,12 @@ Achievements are defined once in `data/achievements.json` with a per-store id ma
 
 Export templates are not committed. Install them from the editor (Editor → Manage Export Templates) before exporting. `data/*.json` is in every preset's include filter; keep it there or exported builds won't find their content.
 
+## The party
+
+You keep a party of up to 4 heroes (`balance.json` → `party`). Day 1 brings 4 walk-ins; the ones you kit out join, the rest leave for the tavern. Each later morning there is a chance of one walk-in (one is guaranteed per empty seat). Taking a walk-in into a full party means letting someone go; they go to the tavern and may walk in again later, keeping their level. Party members you don't kit out rest that day. Every hero has one trait, rolled Common / Uncommon / Rare (`trait_rarity_weights`), affecting stats, gold, materials, mod finds or potions.
+
+Potions go in a fourth "pack" slot and are sold by the merchant. Run-long potions (Haste Tonic, Courage Draught) are used up every run; a Healing Draught is drunk automatically at low HP and only used up if drunk.
+
 ## Combat timing (Haste)
 
 Combat uses action meters, the same as the haste meter in Ore Heroes. Every tick, each unit adds its **Haste** to a meter, and when the meter reaches 100 it acts (overflow carries over). A Haste 12 archer acts about twice as often as a Haste 6 slime. Ranged heroes and casters start a fight with a full meter, so they shoot first. Frost's *chill* halves a monster's Haste; Shock's *stun* wastes a full meter. Haste comes from the class, gear (light weapons +, heavy armor and axes -), the Quicksilver mod and some traits. Events where someone acts carry `tick` and a `meters` snapshot so playback can draw action bars that match the simulation exactly.

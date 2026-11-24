@@ -50,17 +50,32 @@ func shop_merchant(db: ContentDB, st: GameState) -> Array:
 
 
 func outfit(db: ContentDB, st: GameState) -> void:
+	# Take a walk-in if they beat the weakest party member (level, then trait rarity).
+	for cand in st.candidates.duplicate():
+		if st.party.size() < Season.party_size(db):
+			continue
+		var weakest := ""
+		for uid in st.party:
+			if weakest == "" or _hero_score(db, st.roster[uid]) < _hero_score(db, st.roster[weakest]):
+				weakest = uid
+		if weakest != "" and _hero_score(db, st.roster[cand]) > _hero_score(db, st.roster[weakest]):
+			Season.dismiss(st, weakest)
 	var heroes: Array = st.counter.duplicate()
-	heroes.sort_custom(func(a, b): return int(st.roster[a].level) > int(st.roster[b].level))
+	heroes.sort_custom(func(a, b): return _hero_score(db, st.roster[a]) > _hero_score(db, st.roster[b]))
 	var boss_day := Season.is_boss_day(db, st)
-	for i in heroes.size():
-		var uid: String = heroes[i]
-		var kit := _best_kit(db, st, uid)
-		var gear: Array = []
-		for g in kit:
-			gear.append(g)
+	var first := true
+	for uid in heroes:
+		if Season.is_candidate(st, uid) and st.party.size() >= Season.party_size(db) and not st.party.has(uid):
+			continue
+		var gear := _best_kit(db, st, uid)
+		var has_weapon := false
+		for g in gear:
+			if Gear.def_of(db, g).slot == "weapon":
+				has_weapon = true
+		if not has_weapon:
+			continue  # rests today (or, for a walk-in, leaves)
 		var floor_index := 1
-		if boss_day and i == 0:
+		if boss_day and first:
 			floor_index = int(db.bal("boss.floor", 5))
 		else:
 			for f in range(db.floor_count(), 0, -1):
@@ -71,7 +86,13 @@ func outfit(db: ContentDB, st: GameState) -> void:
 		var uids: Array = []
 		for g in gear:
 			uids.append(g.uid)
-		Season.lend(db, st, uid, uids, floor_index)
+		if Season.lend(db, st, uid, uids, floor_index) == "":
+			first = false
+
+
+static func _hero_score(db: ContentDB, hero: Dictionary) -> float:
+	var r := Hero.trait_rarity(db, hero)
+	return float(hero.level) * 10.0 + {"common": 0.0, "uncommon": 3.0, "rare": 7.0}.get(r, 0.0)
 
 
 func _best_kit(db: ContentDB, st: GameState, hero_uid: String) -> Array:
@@ -85,7 +106,7 @@ func _best_kit(db: ContentDB, st: GameState, hero_uid: String) -> Array:
 		var slot: String = def.get("slot", "")
 		var score: float = float(def.get("tier", 1)) * 10.0 + g.mods.size() * 4.0
 		if slot == "weapon" and not kinds.has(def.get("kind")):
-			score -= 25.0
+			score -= 8.0  # off-class weapons work at half strength; better than nothing
 		if not best.has(slot) or score > best[slot].score:
 			best[slot] = {"gear": g, "score": score}
 	var kit: Array = []
@@ -134,7 +155,10 @@ func tend_shop(db: ContentDB, st: GameState) -> void:
 	# Repair badly worn gear if rent is covered.
 	var rent := Season.next_rent(db, st)
 	for g in st.inventory:
-		if float(g.durability) / Gear.max_durability(db, g) < 0.4:
-			var cost := Season.repair_cost(db, st, g.uid)
-			if st.gold - cost >= int(rent.amount):
-				Season.repair(db, st, g.uid)
+		if Gear.def_of(db, g).slot == "pack":
+			continue
+		var cost := Season.repair_cost(db, st, g.uid)
+		if int(g.durability) <= 0 and cost <= st.gold:
+			Season.repair(db, st, g.uid)  # broken gear is useless: fix it even if rent gets tight
+		elif float(g.durability) / Gear.max_durability(db, g) < 0.4 and st.gold - cost >= int(rent.amount):
+			Season.repair(db, st, g.uid)

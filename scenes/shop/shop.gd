@@ -73,10 +73,11 @@ func _on_advance() -> void:
 	match st.phase:
 		GameState.Phase.MORNING:
 			Game.start_day()
-			_say("[b]Day %d.[/b] At the counter:" % st.day)
-			for uid in st.counter:
-				var h: Dictionary = st.roster[uid]
-				_say("  %s, Lv %d, bond %d" % [Hero.display_name(db, h), h.level, h.bond])
+			_say("[b]Day %d.[/b] Party (%d/%d):" % [st.day, st.party.size(), Season.party_size(db)])
+			for uid in st.party:
+				_say("  " + _hero_line(st.roster[uid]))
+			for uid in st.candidates:
+				_say("  [color=#8cf]Walk-in:[/color] " + _hero_line(st.roster[uid]))
 			if not st.merchant_stock.is_empty():
 				var offers: Array = []
 				for o in st.merchant_stock:
@@ -85,7 +86,11 @@ func _on_advance() -> void:
 		GameState.Phase.OUTFIT:
 			for g in _bot.shop_merchant(db, st):
 				_say("  Bought %s." % Gear.display_name(db, g))
+			var before_party: Array = st.party.duplicate()
 			_bot.outfit(db, st)
+			for uid in before_party:
+				if not st.party.has(uid):
+					_say("  Let %s go to make room." % st.roster[uid].name)
 			for loan in st.loans:
 				var names: Array = []
 				for g in loan.gear:
@@ -123,6 +128,14 @@ func _on_advance() -> void:
 			_log.clear()
 	_advance.disabled = false
 	_refresh()
+
+
+func _hero_line(h: Dictionary) -> String:
+	var traits: Array = []
+	for t in h.traits:
+		var row := db.get_row("traits", t)
+		traits.append("%s (%s)" % [row.get("name", t), row.get("rarity", "")])
+	return "%s, Lv %d, bond %d, %s" % [Hero.display_name(db, h), h.level, h.bond, ", ".join(traits)]
 
 
 func _say(text: String) -> void:

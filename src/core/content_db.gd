@@ -113,10 +113,13 @@ func _validate() -> void:
 		_need(c, ["name", "sprite", "role", "weapons", "hp", "might", "guard", "nerve", "luck", "haste"], "classes")
 	for it in rows("items"):
 		_need(it, ["name", "slot", "tier", "stats", "sockets", "durability", "value"], "items")
-		if not ["weapon", "armor", "charm"].has(it.get("slot")):
+		if not ["weapon", "armor", "charm", "pack"].has(it.get("slot")):
 			errors.append("items.%s: bad slot '%s'" % [it.id, it.get("slot")])
 		if it.get("slot") == "weapon" and not it.has("kind"):
 			errors.append("items.%s: weapons need a 'kind'" % it.id)
+	for t in rows("traits"):
+		if not ["common", "uncommon", "rare"].has(t.get("rarity", "")):
+			errors.append("traits.%s: rarity must be common, uncommon or rare" % t.id)
 	for m in rows("mods"):
 		_need(m, ["name", "kind", "value", "cost"], "mods")
 		if m.get("kind") == "element" and not elements.has(m.get("element")):

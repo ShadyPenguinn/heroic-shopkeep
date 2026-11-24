@@ -46,33 +46,61 @@ static func next_rent(db: ContentDB, st: GameState) -> Dictionary:
 
 static func start_day(db: ContentDB, st: GameState) -> void:
 	assert(st.phase == GameState.Phase.MORNING)
-	var rng := Rng.new(Rng.derive(st.run_seed, ["counter", st.day]))
-	st.counter.clear()
+	var rng := Rng.new(Rng.derive(st.run_seed, ["morning", st.day]))
 	st.loans.clear()
 	st.results.clear()
 	st.picks_left.clear()
-	var size_range: Array = db.bal("counter_size", [2, 4])
-	var want := rng.range_i(int(size_range[0]), int(size_range[1]) + int(st.upgrades.get("counter_spot", 0)))
-	# Regulars first: living heroes come back more often the higher their Bond.
-	var regulars: Array = []
-	for uid in st.roster:
-		var h: Dictionary = st.roster[uid]
-		if not h.alive:
-			continue
-		var p := float(db.bal("hero.return_chance_base", 0.3)) + int(h.bond) * float(db.bal("hero.return_chance_per_bond", 0.12))
-		if rng.chance(p):
-			regulars.append(uid)
-	rng.shuffle(regulars)
-	for uid in regulars:
-		if st.counter.size() >= want:
-			break
-		st.counter.append(uid)
-	while st.counter.size() < want:
-		var h := Hero.create(db, rng, st.new_uid("h"), st.day)
-		st.roster[h.uid] = h
-		st.counter.append(h.uid)
+	st.candidates.clear()
+	# Walk-ins: one guaranteed per empty seat (all four on Day 1), plus a chance
+	# of one more who would mean letting someone go.
+	var empty := party_size(db) - st.party.size()
+	var walk_ins := empty
+	if empty == 0 and rng.chance(float(db.bal("party.walk_in_chance", 0.4))):
+		walk_ins = 1
+	for i in walk_ins:
+		st.candidates.append(_walk_in(db, st, rng))
+	st.counter = st.party.duplicate()
+	st.counter.append_array(st.candidates)
 	_stock_merchant(db, st)
 	st.phase = GameState.Phase.OUTFIT
+
+
+static func party_size(db: ContentDB) -> int:
+	return int(db.bal("party.size", 4))
+
+
+static func is_candidate(st: GameState, hero_uid: String) -> bool:
+	return st.candidates.has(hero_uid)
+
+
+## A walk-in is either someone from the tavern coming back (keeping their level)
+## or a stranger near the party's average level.
+static func _walk_in(db: ContentDB, st: GameState, rng: Rng) -> String:
+	if not st.tavern.is_empty() and rng.chance(float(db.bal("party.tavern_return_chance", 0.3))):
+		var uid: String = rng.pick(st.tavern)
+		st.tavern.erase(uid)
+		return uid
+	var level := 1
+	if not st.party.is_empty():
+		var total := 0
+		for uid in st.party:
+			total += int(st.roster[uid].level)
+		var spread := int(db.bal("party.level_spread", 1))
+		level = roundi(float(total) / st.party.size()) + rng.range_i(-spread, spread)
+	var h := Hero.create(db, rng, st.new_uid("h"), st.day, level)
+	st.roster[h.uid] = h
+	return h.uid
+
+
+## Lets a party member go to free a seat. They head to the tavern and may walk in again later.
+static func dismiss(st: GameState, hero_uid: String) -> String:
+	if not st.party.has(hero_uid):
+		return "not in the party"
+	unlend(st, hero_uid)
+	st.party.erase(hero_uid)
+	st.counter.erase(hero_uid)
+	st.tavern.append(hero_uid)
+	return ""
 
 
 # --- the wandering merchant -------------------------------------------------------
@@ -105,7 +133,11 @@ static func _stock_merchant(db: ContentDB, st: GameState) -> void:
 	for i in weights.size():
 		tier_weights[i + 1] = float(weights[i])
 	var by_tier := {}
+	var potions: Array = []
 	for it in db.rows("items"):
+		if it.get("slot", "") == "pack":
+			potions.append(it.id)
+			continue
 		var tier := int(it.get("tier", 1))
 		if not by_tier.has(tier):
 			by_tier[tier] = []
@@ -117,6 +149,11 @@ static func _stock_merchant(db: ContentDB, st: GameState) -> void:
 		var g := Gear.create(db, item_id, st.new_uid("g"))
 		var price := roundi(float(Gear.def_of(db, g).get("value", 10)) * rng.range_f(float(price_range[0]), float(price_range[1])))
 		st.merchant_stock.append({"gear": g, "price": price})
+	for i in rng.range_arr(db.bal("merchant.potions", [2, 3])):
+		if potions.is_empty():
+			break
+		var p := Gear.create(db, rng.pick(potions), st.new_uid("g"))
+		st.merchant_stock.append({"gear": p, "price": int(Gear.def_of(db, p).get("value", 10))})
 
 
 static func buy(db: ContentDB, st: GameState, offer_index: int) -> String:
@@ -140,6 +177,8 @@ static func lend(db: ContentDB, st: GameState, hero_uid: String, gear_uids: Arra
 		return "not outfitting"
 	if not st.counter.has(hero_uid):
 		return "hero is not at the counter"
+	if is_candidate(st, hero_uid) and not st.party.has(hero_uid) and st.party.size() >= party_size(db):
+		return "the party is full: let someone go first"
 	if floor_index < 1 or floor_index > db.floor_count():
 		return "no such floor"
 	# Gear can come from the racks or from this hero's current loan (re-outfitting).
@@ -165,6 +204,8 @@ static func lend(db: ContentDB, st: GameState, hero_uid: String, gear_uids: Arra
 		st.inventory.erase(g)
 		gear.append(g)
 	st.loans.append({"hero": hero_uid, "gear": gear, "floor": floor_index})
+	if is_candidate(st, hero_uid) and not st.party.has(hero_uid):
+		st.party.append(hero_uid)  # kitting out a walk-in recruits them
 	return ""
 
 
@@ -173,11 +214,19 @@ static func unlend(st: GameState, hero_uid: String) -> void:
 		if loan.hero == hero_uid:
 			st.inventory.append_array(loan.gear)
 			st.loans.erase(loan)
+			if is_candidate(st, hero_uid):
+				st.party.erase(hero_uid)  # an un-kitted walk-in hasn't joined yet
 
 
 static func turn_away(st: GameState, hero_uid: String) -> void:
 	unlend(st, hero_uid)
-	st.counter.erase(hero_uid)
+	if is_candidate(st, hero_uid):
+		st.party.erase(hero_uid)
+		st.candidates.erase(hero_uid)
+		st.counter.erase(hero_uid)
+		st.tavern.append(hero_uid)
+	else:
+		dismiss(st, hero_uid)
 
 
 static func loan_for(st: GameState, hero_uid: String) -> Dictionary:
@@ -200,6 +249,13 @@ static func estimate_loan(db: ContentDB, st: GameState, hero_uid: String, gear: 
 static func send_delves(db: ContentDB, st: GameState) -> void:
 	assert(st.phase == GameState.Phase.OUTFIT)
 	st.results.clear()
+	# Walk-ins you didn't kit out leave for the tavern; party members without
+	# gear rest at the shop today.
+	for uid in st.candidates:
+		if not st.party.has(uid):
+			st.tavern.append(uid)
+			st.counter.erase(uid)
+	st.candidates.clear()
 	for loan in st.loans:
 		var hero: Dictionary = st.roster[loan.hero]
 		var opts := {}
@@ -226,6 +282,7 @@ static func begin_dusk(db: ContentDB, st: GameState) -> Array:
 		hero.kills = int(hero.kills) + int(r.total_kills)
 		if r.outcome == "died":
 			hero.alive = false
+			st.party.erase(hero.uid)
 			entry.lost_gear = loan.gear.duplicate()
 			st.memorial.append({
 				"hero": hero.name, "class_id": hero.class_id, "day": st.day,
@@ -235,6 +292,8 @@ static func begin_dusk(db: ContentDB, st: GameState) -> Array:
 			st.bump_stat("gear_lost", loan.gear.size())
 		else:
 			for g in loan.gear:
+				if _potion_spent(db, g, r):
+					continue
 				var title := Gear.record_run(db, g, hero.name, r)
 				if title != "":
 					entry.titles.append({"gear": g.uid, "title": title})
@@ -262,6 +321,16 @@ static func begin_dusk(db: ContentDB, st: GameState) -> Array:
 	st.loans.clear()
 	st.phase = GameState.Phase.DUSK
 	return report
+
+
+## Run-long potions are always used up; a healing draught only if it was drunk.
+static func _potion_spent(db: ContentDB, g: Dictionary, r: Dictionary) -> bool:
+	var def := Gear.def_of(db, g)
+	if def.get("slot", "") != "pack":
+		return false
+	if def.get("potion", {}).get("kind", "") == "heal":
+		return int(r.get("potions_used", 0)) > 0
+	return true
 
 
 static func _killer_of(r: Dictionary) -> String:
@@ -369,7 +438,7 @@ static func repair_cost(db: ContentDB, st: GameState, gear_uid: String) -> int:
 	var g := st.find_gear(gear_uid)
 	if g.is_empty():
 		return 0
-	return (Gear.max_durability(db, g) - int(g.durability)) * int(db.bal("repair_cost_per_point", 1))
+	return roundi((Gear.max_durability(db, g) - int(g.durability)) * float(db.bal("repair_cost_per_point", 1)))
 
 
 static func repair(db: ContentDB, st: GameState, gear_uid: String) -> String:

@@ -119,7 +119,7 @@ func _refresh_hero() -> void:
 	var s := Hero.combat_stats(db, hero, _gear())
 	var traits: Array = []
 	for t in hero.traits:
-		traits.append(db.get_row("traits", t).name)
+		traits.append("%s (%s)" % [db.get_row("traits", t).name, db.get_row("traits", t).get("rarity", "")])
 	_hero_label.text = "%s\nLv %d  HP %d  Might %d  Guard %d\nHaste %d  Nerve %d  Luck %d  Retreats < %d%%\n%s" % [
 		Hero.display_name(db, hero), hero.level, s.max_hp, s.might, s.guard, s.haste, s.nerve, s.luck,
 		roundi(s.nerve_threshold * 100), ", ".join(traits)]

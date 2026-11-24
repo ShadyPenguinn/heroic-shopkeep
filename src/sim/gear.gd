@@ -49,6 +49,8 @@ static func display_name(db: ContentDB, gear: Dictionary) -> String:
 
 ## Records one run on this item. Returns the new title if one was earned.
 static func record_run(db: ContentDB, gear: Dictionary, hero_name: String, result: Dictionary) -> String:
+	if def_of(db, gear).get("slot", "") == "pack":
+		return ""  # potions have no story
 	var h: Dictionary = gear.history
 	h.runs += 1
 	h.kills += int(result.get("total_kills", 0))

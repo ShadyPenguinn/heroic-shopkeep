@@ -1,14 +1,24 @@
 [
-  {"id": "reckless",    "name": "Reckless",    "desc": "Pushes on when hurt. Brings back more.",          "effects": {"nerve_threshold": -0.2, "loot_mult": 1.25}},
-  {"id": "cautious",    "name": "Cautious",    "desc": "Turns back early. Hard to hit.",                  "effects": {"nerve_threshold": 0.15, "guard": 1}},
-  {"id": "greedy",      "name": "Greedy",      "desc": "Hides the best card from the haul.",              "effects": {"hide_best_card": true}},
-  {"id": "loyal",       "name": "Loyal",       "desc": "Shows one extra card. Bonds faster.",             "effects": {"extra_cards": 1, "bond_mult": 2.0}},
-  {"id": "glory_hound", "name": "Glory-hound", "desc": "Always goes one floor deeper than agreed.",       "effects": {"depth_bonus": 1}},
-  {"id": "lucky",       "name": "Lucky",       "desc": "Things just work out.",                           "effects": {"luck": 3}},
-  {"id": "cowardly",    "name": "Cowardly",    "desc": "Quick on their feet, quicker to run.",                      "effects": {"nerve_threshold": 0.25, "haste": 2}},
-  {"id": "collector",   "name": "Collector",   "desc": "Treats your gear gently.",                        "effects": {"wear_mult": 0.5}},
-  {"id": "brawler",     "name": "Brawler",     "desc": "Hits hard, guards poorly, swings slow.",                       "effects": {"might": 2, "guard": -1, "haste": -1}},
-  {"id": "tough",       "name": "Tough",       "desc": "Takes a beating.",                                "effects": {"hp": 10}},
-  {"id": "sharp_eyed",  "name": "Sharp-eyed",  "desc": "Finds the weak spot.",                            "effects": {"crit": 0.08}},
-  {"id": "scholar",     "name": "Scholar",     "desc": "Learns fast, bruises easily.",                    "effects": {"xp_mult": 1.5, "hp": -4}}
+  {"id": "tough",          "name": "Tough",          "rarity": "common",   "desc": "+8 HP.",                                          "effects": {"hp": 8}},
+  {"id": "brawler",        "name": "Brawler",        "rarity": "common",   "desc": "+2 Might, -1 Guard.",                             "effects": {"might": 2, "guard": -1}},
+  {"id": "nimble",         "name": "Nimble",         "rarity": "common",   "desc": "+2 Haste.",                                       "effects": {"haste": 2}},
+  {"id": "steady",         "name": "Steady",         "rarity": "common",   "desc": "+2 Nerve.",                                       "effects": {"nerve": 2}},
+  {"id": "lucky",          "name": "Lucky",          "rarity": "common",   "desc": "+2 Luck.",                                        "effects": {"luck": 2}},
+  {"id": "thrifty",        "name": "Thrifty",        "rarity": "common",   "desc": "Finds 20% more gold.",                            "effects": {"gold_mult": 1.2}},
+  {"id": "cautious",       "name": "Cautious",       "rarity": "common",   "desc": "+1 Guard. Turns back early.",                     "effects": {"guard": 1, "nerve_threshold": 0.12}},
+  {"id": "reckless",       "name": "Reckless",       "rarity": "common",   "desc": "Pushes on when hurt. Brings back 25% more.",      "effects": {"nerve_threshold": -0.2, "gold_mult": 1.25, "material_mult": 1.25}},
+
+  {"id": "prospector",     "name": "Prospector",     "rarity": "uncommon", "desc": "Monsters drop 50% more materials.",               "effects": {"material_mult": 1.5}},
+  {"id": "loyal",          "name": "Loyal",          "rarity": "uncommon", "desc": "Shows one extra card. Bonds twice as fast.",      "effects": {"extra_cards": 1, "bond_mult": 2.0}},
+  {"id": "glory_hound",    "name": "Glory-hound",    "rarity": "uncommon", "desc": "Goes one floor deeper than agreed. +30% loot.",   "effects": {"depth_bonus": 1, "gold_mult": 1.3, "material_mult": 1.3}},
+  {"id": "alchemist",      "name": "Alchemist",      "rarity": "uncommon", "desc": "Potions are 50% stronger.",                       "effects": {"potion_mult": 1.5}},
+  {"id": "scholar",        "name": "Scholar",        "rarity": "uncommon", "desc": "Earns 50% more XP.",                              "effects": {"xp_mult": 1.5}},
+  {"id": "sharp_eyed",     "name": "Sharp-eyed",     "rarity": "uncommon", "desc": "+8% crit chance.",                                "effects": {"crit": 0.08}},
+  {"id": "greedy",         "name": "Greedy",         "rarity": "uncommon", "desc": "Finds 50% more gold, but hides the best card.",   "effects": {"gold_mult": 1.5, "hide_best_card": true}},
+
+  {"id": "treasure_hunter","name": "Treasure Hunter","rarity": "rare",     "desc": "Twice the chance of finding mods. +25% gold.",    "effects": {"mod_find_mult": 2.0, "gold_mult": 1.25}},
+  {"id": "veteran",        "name": "Veteran",        "rarity": "rare",     "desc": "+2 Might, +2 Guard, +6 HP.",                      "effects": {"might": 2, "guard": 2, "hp": 6}},
+  {"id": "field_medic",    "name": "Field Medic",    "rarity": "rare",     "desc": "Healing potions can be drunk twice.",             "effects": {"potion_uses": 1, "potion_mult": 1.25}},
+  {"id": "stormborn",      "name": "Stormborn",      "rarity": "rare",     "desc": "Attacks carry Shock when the weapon has no element.", "effects": {"innate_element": "shock"}},
+  {"id": "untouchable",    "name": "Untouchable",    "rarity": "rare",     "desc": "+10% dodge, +2 Haste.",                           "effects": {"dodge": 0.1, "haste": 2}}
 ]
