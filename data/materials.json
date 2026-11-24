@@ -1,0 +1,7 @@
+[
+  {"id": "bone_dust",   "name": "Bone Dust",   "value": 3, "icon": "bone_dust"},
+  {"id": "slime_gel",   "name": "Slime Gel",   "value": 2, "icon": "slime_gel"},
+  {"id": "orc_iron",    "name": "Orc Iron",    "value": 4, "icon": "orc_iron"},
+  {"id": "wolf_pelt",   "name": "Wolf Pelt",   "value": 6, "icon": "wolf_pelt"},
+  {"id": "ember_shard", "name": "Ember Shard", "value": 10, "icon": "ember_shard"}
+]

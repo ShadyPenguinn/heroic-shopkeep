@@ -1,0 +1,13 @@
+[
+  {"id": "fire_rune",   "name": "Fire Rune",   "kind": "element", "element": "fire",  "value": 30, "cost": {"ember_shard": 1, "slime_gel": 2}, "desc": "Fire damage. Burns."},
+  {"id": "frost_rune",  "name": "Frost Rune",  "kind": "element", "element": "frost", "value": 30, "cost": {"slime_gel": 3},                    "desc": "Frost damage. Chills."},
+  {"id": "holy_rune",   "name": "Holy Rune",   "kind": "element", "element": "holy",  "value": 30, "cost": {"bone_dust": 3},                    "desc": "Holy damage. Staggers."},
+  {"id": "shock_rune",  "name": "Shock Rune",  "kind": "element", "element": "shock", "value": 30, "cost": {"orc_iron": 2, "slime_gel": 1},     "desc": "Shock damage. Stuns."},
+  {"id": "whetstone",   "name": "Whetstone",   "kind": "stat",    "stats": {"might": 2},         "value": 20, "cost": {"orc_iron": 2},           "desc": "+2 Might."},
+  {"id": "quicksilver", "name": "Quicksilver", "kind": "stat",    "stats": {"haste": 2},         "value": 25, "cost": {"slime_gel": 2, "wolf_pelt": 1}, "desc": "+2 Haste."},
+  {"id": "plating",     "name": "Plating",     "kind": "stat",    "stats": {"guard": 2},         "value": 20, "cost": {"orc_iron": 2},           "desc": "+2 Guard."},
+  {"id": "cleave",      "name": "Cleave",      "kind": "action",  "action": "cleave",            "value": 40, "cost": {"wolf_pelt": 1, "orc_iron": 1}, "desc": "Attacks also hit a second enemy."},
+  {"id": "riposte",     "name": "Riposte",     "kind": "action",  "action": "riposte",           "value": 40, "cost": {"bone_dust": 2, "orc_iron": 1}, "desc": "Counterattacks after a block."},
+  {"id": "pierce",      "name": "Pierce",      "kind": "action",  "action": "pierce",            "value": 40, "cost": {"bone_dust": 1, "wolf_pelt": 1}, "desc": "Ignores enemy armor."},
+  {"id": "second_wind", "name": "Second Wind", "kind": "action",  "action": "second_wind",       "value": 45, "cost": {"wolf_pelt": 1, "ember_shard": 1}, "desc": "Survives one killing blow, once per run."}
+]

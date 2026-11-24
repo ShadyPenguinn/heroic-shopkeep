@@ -1,0 +1,7 @@
+[
+  {"id": "first_loan",    "name": "Open for Business", "desc": "Lend your first piece of gear.",       "store_ids": {"steam": "ACH_FIRST_LOAN"}},
+  {"id": "first_loss",    "name": "All Loans Final",   "desc": "Lose gear to the dungeon.",            "store_ids": {"steam": "ACH_FIRST_LOSS"}},
+  {"id": "titled_gear",   "name": "A Name of Its Own", "desc": "Gear earns a title.",                  "store_ids": {"steam": "ACH_TITLED_GEAR"}},
+  {"id": "rent_paid",     "name": "Paid in Full",      "desc": "Pay the landlord.",                    "store_ids": {"steam": "ACH_RENT_PAID"}},
+  {"id": "season_won",    "name": "The Warden Sleeps", "desc": "Defeat the Deep Warden.",              "store_ids": {"steam": "ACH_SEASON_WON"}}
+]

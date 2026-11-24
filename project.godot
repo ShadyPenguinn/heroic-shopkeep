@@ -1,0 +1,52 @@
+; Engine configuration file.
+; Edit through Project > Project Settings in the editor where possible.
+
+config_version=5
+
+[application]
+
+config/name="Heroic Shopkeep"
+config/description="Lend gear to adventurers. Take a cut. Count the losses."
+config/version="0.1.0"
+run/main_scene="res://scenes/boot/boot.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Events="*res://src/autoload/events.gd"
+Content="*res://src/autoload/content.gd"
+Platform="*res://src/autoload/platform.gd"
+Audio="*res://src/autoload/audio.gd"
+Settings="*res://src/autoload/settings.gd"
+Juice="*res://src/autoload/juice.gd"
+Game="*res://src/autoload/game.gd"
+Router="*res://src/autoload/router.gd"
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=360
+window/size/window_width_override=1280
+window/size/window_height_override=720
+window/stretch/mode="viewport"
+window/stretch/scale_mode="integer"
+
+[game]
+
+store/itch_url=""
+steam/app_id=480
+
+[gui]
+
+theme/default_font_antialiasing=0
+
+[rendering]
+
+environment/defaults/default_clear_color=Color(0.09, 0.06, 0.09, 1)
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true

@@ -1,0 +1,190 @@
+{
+  "_doc": "Global tuning numbers. Every number the designer might want to tweak lives here or in another data file, never in code.",
+  "season_length": 28,
+  "rent_interval": 7,
+  "rent": [
+    60,
+    130,
+    220,
+    320
+  ],
+  "start_gold": 60,
+  "start_inventory": [
+    "iron_sword",
+    "iron_sword",
+    "iron_spear",
+    "iron_bow",
+    "oak_staff",
+    "leather_vest",
+    "leather_vest",
+    "lucky_coin"
+  ],
+  "counter_size": [
+    2,
+    4
+  ],
+  "elements": [
+    "fire",
+    "frost",
+    "holy",
+    "shock"
+  ],
+  "element_status": {
+    "fire": "burn",
+    "frost": "chill",
+    "holy": "stagger",
+    "shock": "stun"
+  },
+  "status_chance": 0.35,
+  "element_weak_mult": 1.5,
+  "element_resist_mult": 0.5,
+  "survival_bands": {
+    "safe": 0.1,
+    "risky": 0.35
+  },
+  "estimate_sims": 200,
+  "rooms_per_run": [
+    3,
+    6
+  ],
+  "room_weights": {
+    "fight": 55,
+    "treasure": 20,
+    "trap": 15,
+    "rest": 10
+  },
+  "hero": {
+    "hp_per_level": 5,
+    "might_per_level": 1,
+    "guard_every_levels": 2,
+    "xp_per_level": [
+      0,
+      20,
+      50,
+      100,
+      170,
+      260
+    ]
+  },
+  "combat": {
+    "max_ticks": 3000,
+    "chill_haste_mult": 0.5,
+    "crit_base": 0.05,
+    "crit_per_luck": 0.015,
+    "dodge_per_luck": 0.012,
+    "crit_mult": 1.75,
+    "monster_dodge": 0.05,
+    "cleave_mult": 0.6,
+    "riposte_mult": 0.5,
+    "second_wind_heal": 0.35,
+    "healer_heal": 0.25,
+    "panic_factor": 0.6
+  },
+  "nerve": {
+    "base_threshold": 0.45,
+    "per_point": 0.04,
+    "min": 0.05,
+    "max": 0.7
+  },
+  "rooms": {
+    "rest_heal": 0.25,
+    "trap_damage": [
+      0.08,
+      0.18
+    ],
+    "trap_dodge_per_luck": 0.03
+  },
+  "sell_mult": 0.5,
+  "bond": {
+    "safe_return": 1,
+    "good_gear_tier": 2,
+    "good_gear": 1,
+    "lost_gear": -2,
+    "max": 5
+  },
+  "xp": {
+    "per_room": 2
+  },
+  "haul": {
+    "min_cards": 2,
+    "tip_gold": [
+      3,
+      8
+    ]
+  },
+  "titles": [
+    {
+      "stat": "kills",
+      "at": 10,
+      "title": "{top_kill}bane",
+      "value_bonus": 0.5
+    },
+    {
+      "stat": "deepest",
+      "at": 5,
+      "title": "Deepdelver",
+      "value_bonus": 0.5
+    },
+    {
+      "stat": "runs",
+      "at": 6,
+      "title": "Old Faithful",
+      "value_bonus": 0.3
+    }
+  ],
+  "merchant": {
+    "_doc": "The wandering merchant visits mid-week (day 4 of each 7-day week) and sells gear plus a few potions. Stock gets better as the season goes on.",
+    "week_day": 4,
+    "stock_size": [
+      4,
+      6
+    ],
+    "price_mult": [
+      0.9,
+      1.3
+    ],
+    "tier_weights_by_week": [
+      [
+        80,
+        20,
+        0
+      ],
+      [
+        45,
+        50,
+        5
+      ],
+      [
+        20,
+        60,
+        20
+      ],
+      [
+        10,
+        50,
+        40
+      ]
+    ],
+    "potions": [
+      2,
+      3
+    ]
+  },
+  "boss": {
+    "day": 28,
+    "floor": 5,
+    "monster": "deep_warden"
+  },
+  "party": {
+    "_doc": "Max party size; each morning a walk-in may arrive (one guaranteed per empty seat). Dismissed or un-kitted walk-ins go to the tavern and may return.",
+    "size": 4,
+    "walk_in_chance": 0.4,
+    "tavern_return_chance": 0.3,
+    "level_spread": 1
+  },
+  "trait_rarity_weights": {
+    "common": 65,
+    "uncommon": 27,
+    "rare": 8
+  }
+}
