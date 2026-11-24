@@ -16,8 +16,8 @@ signal event_shown(event: Dictionary)
 
 const HERO_X := -80.0
 const MONSTER_X := 80.0
-const ROW_TOP := -30.0
-const ROW_H := 34.0
+const ROW_TOP := -50.0
+const ROW_H := 42.0
 const BOSS_ROW := 1.5   # a lone boss stands mid-stack
 
 ## Base durations in seconds at 1x speed. Tune feel here.

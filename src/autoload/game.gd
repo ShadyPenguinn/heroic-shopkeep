@@ -62,8 +62,32 @@ func lend(hero_uid: String, gear_uids: Array) -> String:
 	return err
 
 
+func equip(hero_uid: String, gear_uid: String) -> String:
+	var err := Season.equip(db, state, hero_uid, gear_uid)
+	if err == "":
+		Platform.unlock("first_loan")
+		Events.gear_lent.emit(hero_uid)
+	return err
+
+
+func unequip(hero_uid: String, gear_uid: String) -> String:
+	return Season.unequip(db, state, hero_uid, gear_uid)
+
+
 func turn_away(hero_uid: String) -> void:
 	Season.turn_away(state, hero_uid)
+
+
+func dismiss(hero_uid: String) -> String:
+	return Season.dismiss(state, hero_uid)
+
+
+func sell(gear_uid: String) -> String:
+	return Season.sell_gear(db, state, gear_uid)
+
+
+func socket(gear_uid: String, mod_id: String) -> String:
+	return Season.socket_mod(db, state, gear_uid, mod_id)
 
 
 func set_delve_floor(floor_index: int) -> String:

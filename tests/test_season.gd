@@ -260,3 +260,27 @@ func test_old_save_migrates(t: TestContext) -> void:
 	var back := GameState.from_dict(d)
 	t.eq(back.delve_floor, 3, "deepest old loan floor becomes the party floor")
 	t.ok(not back.loans[0].has("floor"), "loans lose their floor")
+
+
+func test_equip_and_unequip_one_item_at_a_time(t: TestContext) -> void:
+	var st := Season.new_game(db, 41)
+	Season.start_day(db, st)
+	var uid: String = st.candidates[0]
+	var swords: Array = []
+	var vest := ""
+	for g in st.inventory:
+		if g.def == "iron_sword":
+			swords.append(g.uid)
+		if g.def == "leather_vest" and vest == "":
+			vest = g.uid
+	t.eq(Season.equip(db, st, uid, swords[0]), "", "equip a sword")
+	t.ok(st.party.has(uid), "a walk-in handed gear joins")
+	t.eq(Season.equip(db, st, uid, vest), "", "add a vest")
+	t.eq(Season.loan_for(st, uid).gear.size(), 2, "sword and vest")
+	t.eq(Season.equip(db, st, uid, swords[1]), "", "swap swords")
+	t.ok(not st.find_gear(swords[0]).is_empty(), "the first sword goes back on the shelf")
+	t.eq(Season.loan_for(st, uid).gear.size(), 2, "still two items")
+	Season.unequip(db, st, uid, swords[1])
+	Season.unequip(db, st, uid, vest)
+	t.ok(Season.loan_for(st, uid).is_empty(), "nothing left on them")
+	t.ok(not st.party.has(uid), "an un-kitted walk-in hasn't joined after all")

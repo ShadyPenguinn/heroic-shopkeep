@@ -235,6 +235,32 @@ static func lend(db: ContentDB, st: GameState, hero_uid: String, gear_uids: Arra
 	return ""
 
 
+## Puts one item from the racks on a hero, replacing whatever is in that slot.
+static func equip(db: ContentDB, st: GameState, hero_uid: String, gear_uid: String) -> String:
+	var g := st.find_gear(gear_uid)
+	if g.is_empty():
+		return "that is not on the shelves"
+	var slot: String = Gear.def_of(db, g).get("slot", "")
+	var uids: Array = []
+	for worn in loan_for(st, hero_uid).get("gear", []):
+		if Gear.def_of(db, worn).get("slot", "") != slot:
+			uids.append(worn.uid)
+	uids.append(gear_uid)
+	return lend(db, st, hero_uid, uids)
+
+
+## Takes one item off a hero and puts it back on the shelves.
+static func unequip(db: ContentDB, st: GameState, hero_uid: String, gear_uid: String) -> String:
+	var uids: Array = []
+	for worn in loan_for(st, hero_uid).get("gear", []):
+		if worn.uid != gear_uid:
+			uids.append(worn.uid)
+	if uids.is_empty():
+		unlend(st, hero_uid)
+		return ""
+	return lend(db, st, hero_uid, uids)
+
+
 static func unlend(st: GameState, hero_uid: String) -> void:
 	for loan in st.loans.duplicate():
 		if loan.hero == hero_uid:
