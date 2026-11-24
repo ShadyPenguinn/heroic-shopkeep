@@ -1,0 +1,17 @@
+# Godot
+.godot/
+*.translation
+export_credentials.cfg
+
+# Builds
+build/
+*.pck
+*.zip
+
+# Steam dev file (contains only the app id, but per machine)
+steam_appid.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.tmp
