@@ -112,7 +112,7 @@ func _validate() -> void:
 	for c in rows("classes"):
 		_need(c, ["name", "sprite", "role", "weapons", "hp", "might", "guard", "nerve", "luck", "haste"], "classes")
 	for it in rows("items"):
-		_need(it, ["name", "slot", "tier", "stats", "sockets", "durability", "value"], "items")
+		_need(it, ["name", "slot", "tier", "stats", "sockets", "value"], "items")
 		if not ["weapon", "armor", "charm", "pack"].has(it.get("slot")):
 			errors.append("items.%s: bad slot '%s'" % [it.id, it.get("slot")])
 		if it.get("slot") == "weapon" and not it.has("kind"):

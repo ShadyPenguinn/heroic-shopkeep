@@ -138,7 +138,7 @@ static func _fix_json_numbers(s: GameState) -> void:
 	for loan in s.loans:
 		all_gear.append_array(loan.get("gear", []))
 	for g in all_gear:
-		g.durability = int(g.get("durability", 0))
+		g.erase("durability")  # older saves had durability
 		var h: Dictionary = g.get("history", {})
 		for key in ["runs", "kills", "deepest"]:
 			h[key] = int(h.get(key, 0))

@@ -115,9 +115,6 @@ func _run(content: ContentDB, hero: Dictionary, gear: Array, floor_index: int, s
 			break
 
 	_emit("run_end", {"outcome": outcome})
-	var wear := 0.0
-	if outcome != "died":
-		wear = (rooms_cleared * float(db.bal("wear.per_room", 2)) + hits_taken * float(db.bal("wear.per_hit_taken", 1))) * float(s.wear_mult)
 	var result := {
 		"sim_version": SIM_VERSION,
 		"seed": seed_value,
@@ -133,7 +130,6 @@ func _run(content: ContentDB, hero: Dictionary, gear: Array, floor_index: int, s
 		"total_kills": total_kills,
 		"boss_killed": boss_killed,
 		"xp": 0 if outcome == "died" else roundi(xp * float(s.xp_mult)),
-		"wear": roundi(wear),
 		"potions_used": potions_used,
 		"loot": loot,
 		"haul": [] if outcome == "died" else HaulGenerator.build(db, loot, s, floor_def, rng),

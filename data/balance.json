@@ -78,8 +78,7 @@
     "riposte_mult": 0.5,
     "second_wind_heal": 0.35,
     "healer_heal": 0.25,
-    "panic_factor": 0.6,
-    "broken_gear_stat_mult": 0.0
+    "panic_factor": 0.6
   },
   "nerve": {
     "base_threshold": 0.45,
@@ -95,11 +94,6 @@
     ],
     "trap_dodge_per_luck": 0.03
   },
-  "wear": {
-    "per_room": 1,
-    "per_hit_taken": 0.5
-  },
-  "repair_cost_per_point": 0.5,
   "sell_mult": 0.5,
   "bond": {
     "safe_return": 1,

@@ -434,25 +434,6 @@ static func socket_mod(db: ContentDB, st: GameState, gear_uid: String, mod_id: S
 	return ""
 
 
-static func repair_cost(db: ContentDB, st: GameState, gear_uid: String) -> int:
-	var g := st.find_gear(gear_uid)
-	if g.is_empty():
-		return 0
-	return roundi((Gear.max_durability(db, g) - int(g.durability)) * float(db.bal("repair_cost_per_point", 1)))
-
-
-static func repair(db: ContentDB, st: GameState, gear_uid: String) -> String:
-	var cost := repair_cost(db, st, gear_uid)
-	if cost <= 0:
-		return "nothing to repair"
-	if st.gold < cost:
-		return "not enough gold"
-	st.gold -= cost
-	var g := st.find_gear(gear_uid)
-	g.durability = Gear.max_durability(db, g)
-	return ""
-
-
 static func sell_gear(db: ContentDB, st: GameState, gear_uid: String) -> String:
 	var g := st.find_gear(gear_uid)
 	if g.is_empty():

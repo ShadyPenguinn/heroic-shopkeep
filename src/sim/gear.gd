@@ -1,7 +1,7 @@
 class_name Gear
 extends RefCounted
 ## Helpers for gear instances. A piece of gear is a plain Dictionary:
-##   {uid, def, mods: [mod ids], durability, title,
+##   {uid, def, mods: [mod ids], title,
 ##    history: {runs, kills, deepest, carriers: [names], kill_counts: {monster_id: n}}}
 ## `def` points at a row in items.json; everything else is this one item's story.
 
@@ -12,7 +12,6 @@ static func create(db: ContentDB, def_id: String, uid: String) -> Dictionary:
 		"uid": uid,
 		"def": def_id,
 		"mods": [],
-		"durability": int(def.get("durability", 1)),
 		"history": {"runs": 0, "kills": 0, "deepest": 0, "carriers": [], "kill_counts": {}},
 		"title": "",
 	}
@@ -20,10 +19,6 @@ static func create(db: ContentDB, def_id: String, uid: String) -> Dictionary:
 
 static func def_of(db: ContentDB, gear: Dictionary) -> Dictionary:
 	return db.get_row("items", gear.get("def", ""))
-
-
-static func max_durability(db: ContentDB, gear: Dictionary) -> int:
-	return int(def_of(db, gear).get("durability", 1))
 
 
 static func free_sockets(db: ContentDB, gear: Dictionary) -> int:
@@ -36,8 +31,7 @@ static func value(db: ContentDB, gear: Dictionary) -> int:
 		v += float(db.get_row("mods", mod_id).get("value", 0))
 	if gear.get("title", "") != "":
 		v *= 1.0 + float(gear.get("title_bonus", 0.0))
-	var dur_ratio := float(gear.get("durability", 0)) / maxf(1.0, max_durability(db, gear))
-	return roundi(v * lerpf(0.4, 1.0, dur_ratio))
+	return roundi(v)
 
 
 static func display_name(db: ContentDB, gear: Dictionary) -> String:
@@ -60,7 +54,6 @@ static func record_run(db: ContentDB, gear: Dictionary, hero_name: String, resul
 	var kc: Dictionary = result.get("kills", {})
 	for m in kc:
 		h.kill_counts[m] = int(h.kill_counts.get(m, 0)) + int(kc[m])
-	gear.durability = maxi(0, int(gear.durability) - int(result.get("wear", 0)))
 	return _check_title(db, gear)
 
 

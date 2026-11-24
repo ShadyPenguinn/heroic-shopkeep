@@ -20,9 +20,10 @@ var _unlocked: Dictionary = {}
 ## Steam is not running); Platform then falls back to the local backend.
 func init() -> bool:
 	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
-	var data: Variant = JSON.parse_string(read_file(LOCAL_ACHIEVEMENTS).get_string_from_utf8())
-	if data is Dictionary:
-		_unlocked = data
+	if file_exists(LOCAL_ACHIEVEMENTS):
+		var data: Variant = JSON.parse_string(read_file(LOCAL_ACHIEVEMENTS).get_string_from_utf8())
+		if data is Dictionary:
+			_unlocked = data
 	return true
 
 

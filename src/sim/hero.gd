@@ -95,7 +95,6 @@ static func combat_stats(db: ContentDB, hero: Dictionary, gear: Array) -> Dictio
 		"extra_cards": 0,
 		"hide_best_card": false,
 		"depth_bonus": 0,
-		"wear_mult": 1.0,
 		"xp_mult": 1.0,
 		"bond_mult": 1.0,
 		"nerve_threshold_mod": 0.0,
@@ -111,9 +110,7 @@ static func combat_stats(db: ContentDB, hero: Dictionary, gear: Array) -> Dictio
 			s.pack = def.id
 			continue
 		var mult := 1.0
-		if int(g.get("durability", 1)) <= 0:
-			mult = float(db.bal("combat.broken_gear_stat_mult", 0.0))
-		elif def.get("slot") == "weapon" and not weapon_kinds.has(def.get("kind")):
+		if def.get("slot") == "weapon" and not weapon_kinds.has(def.get("kind")):
 			mult = 0.5  # wrong weapon type for this class: half the benefit
 		_add_stats(s, def.get("stats", {}), mult)
 		for mod_id in g.get("mods", []):
@@ -140,7 +137,6 @@ static func combat_stats(db: ContentDB, hero: Dictionary, gear: Array) -> Dictio
 			s.element = str(fx.innate_element)
 		s.extra_cards += int(fx.get("extra_cards", 0))
 		s.depth_bonus += int(fx.get("depth_bonus", 0))
-		s.wear_mult *= float(fx.get("wear_mult", 1.0))
 		s.xp_mult *= float(fx.get("xp_mult", 1.0))
 		s.bond_mult *= float(fx.get("bond_mult", 1.0))
 		if fx.get("hide_best_card", false):

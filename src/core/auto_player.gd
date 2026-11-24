@@ -36,7 +36,7 @@ func shop_merchant(db: ContentDB, st: GameState) -> Array:
 			var def := Gear.def_of(db, offer.gear)
 			var have := 0
 			for g in st.inventory:
-				if Gear.def_of(db, g).slot == def.slot and int(g.durability) > 0:
+				if Gear.def_of(db, g).slot == def.slot:
 					have += 1
 			var score := float(def.get("tier", 1)) * 10.0 / maxf(1.0, float(have)) - float(offer.price) * 0.05
 			if score > best_score:
@@ -100,8 +100,6 @@ func _best_kit(db: ContentDB, st: GameState, hero_uid: String) -> Array:
 	var kinds: Array = cls.get("weapons", [])
 	var best := {}
 	for g in st.inventory:
-		if int(g.durability) <= 0:
-			continue
 		var def := Gear.def_of(db, g)
 		var slot: String = def.get("slot", "")
 		var score: float = float(def.get("tier", 1)) * 10.0 + g.mods.size() * 4.0
@@ -152,13 +150,3 @@ func tend_shop(db: ContentDB, st: GameState) -> void:
 						target = g.uid
 			if target == "" or Season.socket_mod(db, st, target, mod_id) != "":
 				break
-	# Repair badly worn gear if rent is covered.
-	var rent := Season.next_rent(db, st)
-	for g in st.inventory:
-		if Gear.def_of(db, g).slot == "pack":
-			continue
-		var cost := Season.repair_cost(db, st, g.uid)
-		if int(g.durability) <= 0 and cost <= st.gold:
-			Season.repair(db, st, g.uid)  # broken gear is useless: fix it even if rent gets tight
-		elif float(g.durability) / Gear.max_durability(db, g) < 0.4 and st.gold - cost >= int(rent.amount):
-			Season.repair(db, st, g.uid)
