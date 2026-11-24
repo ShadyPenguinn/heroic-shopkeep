@@ -120,8 +120,8 @@ func _refresh_hero() -> void:
 	var traits: Array = []
 	for t in hero.traits:
 		traits.append(db.get_row("traits", t).name)
-	_hero_label.text = "%s\nLv %d  HP %d  Might %d  Guard %d\nNerve %d  Luck %d  Retreats < %d%%\n%s" % [
-		Hero.display_name(db, hero), hero.level, s.max_hp, s.might, s.guard, s.nerve, s.luck,
+	_hero_label.text = "%s\nLv %d  HP %d  Might %d  Guard %d\nHaste %d  Nerve %d  Luck %d  Retreats < %d%%\n%s" % [
+		Hero.display_name(db, hero), hero.level, s.max_hp, s.might, s.guard, s.haste, s.nerve, s.luck,
 		roundi(s.nerve_threshold * 100), ", ".join(traits)]
 	_estimate_label.text = ""
 

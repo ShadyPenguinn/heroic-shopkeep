@@ -76,6 +76,8 @@ func play(result: Dictionary, hero: Dictionary, db: ContentDB = null) -> void:
 
 func _show(ev: Dictionary) -> void:
 	var beat: float = BEAT.get(ev.type, 0.2)
+	if ev.has("meters"):
+		_update_meters(ev, beat)
 	match ev.type:
 		"room_enter":
 			_room_label.text = "Room %d: %s" % [int(ev.index) + 1, str(ev.kind).capitalize()]
@@ -213,6 +215,22 @@ func _show(ev: Dictionary) -> void:
 			_room_label.text = {"survived": "Heading home", "retreated": "Limping home", "died": "Lost"}.get(ev.outcome, "")
 			Juice.pop(_room_label, 0.3)
 	await _wait(beat)
+
+
+## The acting unit's bar fills to full, then drops to its leftover; the others
+## slide to where they are now.
+func _update_meters(ev: Dictionary, beat: float) -> void:
+	var meters: Dictionary = ev.meters
+	var acting := str(ev.get("actor", ""))
+	for key in meters:
+		var a := _actor(key)
+		if a == null:
+			continue
+		if key == acting:
+			a.meter = 100.0
+			a.set_meter(float(meters[key]), beat * 0.4 / speed)
+		else:
+			a.set_meter(float(meters[key]), beat * 0.6 / speed)
 
 
 func _jump_to_end(result: Dictionary) -> void:

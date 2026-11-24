@@ -5,7 +5,7 @@ extends RefCounted
 ##   {uid, name, class_id, level, xp, traits: [ids], bond, alive, tint: [r,g,b],
 ##    runs, kills, deaths_witnessed, day_met}
 
-const STAT_KEYS: PackedStringArray = ["might", "guard", "nerve", "luck"]
+const STAT_KEYS: PackedStringArray = ["might", "guard", "nerve", "luck", "haste"]
 
 
 static func create(db: ContentDB, rng: Rng, uid: String, day: int = 1) -> Dictionary:
@@ -61,6 +61,7 @@ static func combat_stats(db: ContentDB, hero: Dictionary, gear: Array) -> Dictio
 		"guard": int(cls.get("guard", 0)) + (level - 1) / maxi(1, int(db.bal("hero.guard_every_levels", 2))),
 		"nerve": int(cls.get("nerve", 0)),
 		"luck": int(cls.get("luck", 0)),
+		"haste": int(cls.get("haste", 8)),
 		"block": float(cls.get("block", 0.0)),
 		"role": str(cls.get("role", "front")),
 		"element": "",
@@ -111,6 +112,7 @@ static func combat_stats(db: ContentDB, hero: Dictionary, gear: Array) -> Dictio
 	s.max_hp = maxi(1, s.max_hp)
 	s.might = maxi(1, s.might)
 	s.guard = maxi(0, s.guard)
+	s.haste = maxi(1, s.haste)
 	s.crit += float(db.bal("combat.crit_base", 0.05)) + s.luck * float(db.bal("combat.crit_per_luck", 0.015))
 	s["dodge"] = s.luck * float(db.bal("combat.dodge_per_luck", 0.012))
 	var t: float = float(db.bal("nerve.base_threshold", 0.45)) - float(s.nerve) * float(db.bal("nerve.per_point", 0.04))
@@ -120,7 +122,7 @@ static func combat_stats(db: ContentDB, hero: Dictionary, gear: Array) -> Dictio
 
 
 static func _add_stats(s: Dictionary, stats: Dictionary, mult: float) -> void:
-	for k in ["might", "guard", "nerve", "luck"]:
+	for k in ["might", "guard", "nerve", "luck", "haste"]:
 		if stats.has(k):
 			s[k] += roundi(float(stats[k]) * mult)
 	if stats.has("hp"):

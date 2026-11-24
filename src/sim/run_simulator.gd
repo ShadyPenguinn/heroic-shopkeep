@@ -11,17 +11,17 @@ extends RefCounted
 ## is in the log. See EVENT TYPES below and docs in README.md.
 ##
 ## EVENT TYPES (every event has "type"; actors are "hero" or a monster key "m0".."mN")
-##   run_start   {hero, floor, hp, max_hp, rooms, element}
+##   run_start   {hero, floor, hp, max_hp, rooms, element, haste}
 ##   room_enter  {index, kind}                       kind: fight|treasure|trap|rest|boss
-##   spawn       {monsters: [{key, id, hp, max_hp}]}
-##   attack      {actor, target, dmg, crit, eff, element, hp, tag}   eff: weak|resist|""  tag: ""|first_strike|cleave|riposte
+##   spawn       {monsters: [{key, id, hp, max_hp, haste}]}
+##   attack      {actor, target, dmg, crit, eff, element, hp, tag}   eff: weak|resist|""  tag: ""|cleave|riposte
 ##   miss        {actor, target}
 ##   dodge       {actor, target}                      the hero dodged a monster
 ##   block       {actor, target}                      the hero blocked a monster
 ##   hit         {actor, target, dmg, hp}             a monster hurt the hero
 ##   status      {target, status}                     burn|chill|stagger|stun
 ##   status_tick {target, status, dmg, hp}
-##   skip_turn   {actor, status}
+##   skip_turn   {actor, status}                      stunned: the full meter is spent doing nothing
 ##   heal        {target, amount, hp, source}         source: rest|prayer|second_wind
 ##   kill        {target, id}
 ##   drop        {material, qty}
@@ -31,7 +31,11 @@ extends RefCounted
 ##   death       {hp, killer}
 ##   run_end     {outcome}                            outcome: survived|retreated|died
 
-const SIM_VERSION := 1
+const SIM_VERSION := 2  # 2: action meters driven by Haste replaced fixed rounds
+const METER_FULL := 100
+## Events where someone acts carry "tick" and a "meters" snapshot {actor key: 0..99}
+## so playback can draw action bars that match the simulation.
+const METER_EVENTS: PackedStringArray = ["attack", "hit", "miss", "dodge", "block", "skip_turn", "heal", "status_tick"]
 
 var db: ContentDB
 var rng: Rng
@@ -51,6 +55,8 @@ var monsters: Array = []
 var floor_def: Dictionary
 var killer := ""
 var boss_killed := false
+var hero_meter := 0
+var tick := -1   # combat tick, -1 outside fights
 
 
 ## opts: {record_events: bool = true, boss: monster_id = ""}
@@ -70,7 +76,7 @@ func _run(content: ContentDB, hero: Dictionary, gear: Array, floor_index: int, s
 	floor_def = db.floor_by_index(target)
 	var boss_id: String = opts.get("boss", "")
 	var room_count := rng.range_arr(db.bal("rooms_per_run", [3, 6]))
-	_emit("run_start", {"hero": hero.get("uid", ""), "floor": target, "hp": hp, "max_hp": s.max_hp, "rooms": room_count, "element": s.element})
+	_emit("run_start", {"hero": hero.get("uid", ""), "floor": target, "hp": hp, "max_hp": s.max_hp, "rooms": room_count, "element": s.element, "haste": s.haste})
 
 	var outcome := "survived"
 	var rooms_cleared := 0
@@ -157,52 +163,71 @@ func _fight(monster_ids: Array) -> String:
 			"hp": roundi(float(def.get("hp", 10)) * m_scale),
 			"might": float(def.get("might", 1)) * m_scale,
 			"guard": int(def.get("guard", 0)),
+			"haste": maxi(1, int(def.get("haste", 8))),
+			"meter": 0,
 			"status": {},
 		}
 		m["max_hp"] = m.hp
 		monsters.append(m)
-		spawn_info.append({"key": m.key, "id": m.id, "hp": m.hp, "max_hp": m.max_hp})
+		spawn_info.append({"key": m.key, "id": m.id, "hp": m.hp, "max_hp": m.max_hp, "haste": m.haste})
 	_emit("spawn", {"monsters": spawn_info})
 
-	var max_rounds := int(db.bal("combat.max_rounds", 30))
+	# Action meters, as in Ore Heroes: every tick each unit adds its Haste to
+	# its meter and acts when the meter reaches 100 (overflow carries over).
+	# Ranged heroes and casters start with a full meter, so they shoot first.
+	hero_meter = METER_FULL if (s.role == "ranged" or s.role == "caster") else 0
+	var max_ticks := int(db.bal("combat.max_ticks", 3000))
 	var prayed := false
-	# Ranged heroes and casters loose one free shot before the melee starts.
-	if s.role == "ranged" or s.role == "caster":
-		_hero_attack(_first_alive(), 1.0, "first_strike")
-
-	for round_i in max_rounds:
+	var outcome := "cleared"
+	for t in max_ticks:
+		tick = t
 		if _first_alive().is_empty():
 			break
-		# Hero turn
-		var target := _first_alive()
-		_hero_attack(target, 1.0, "")
-		if s.actions.has("cleave"):
-			var second := _first_alive(target)
-			if not second.is_empty():
-				_hero_attack(second, float(db.bal("combat.cleave_mult", 0.6)), "cleave")
-		if s.role == "healer" and not prayed and hp < s.max_hp * 0.5:
-			prayed = true
-			_heal(roundi(s.max_hp * float(db.bal("combat.healer_heal", 0.25))), "prayer")
-		# Monster turns
+		# Hero
+		hero_meter += int(s.haste)
+		if hero_meter >= METER_FULL:
+			hero_meter -= METER_FULL
+			var target := _first_alive()
+			_hero_attack(target, 1.0, "")
+			if s.actions.has("cleave"):
+				var second := _first_alive(target)
+				if not second.is_empty():
+					_hero_attack(second, float(db.bal("combat.cleave_mult", 0.6)), "cleave")
+			if s.role == "healer" and not prayed and hp < s.max_hp * 0.5:
+				prayed = true
+				_heal(roundi(s.max_hp * float(db.bal("combat.healer_heal", 0.25))), "prayer")
+			if _first_alive().is_empty():
+				break
+		# Monsters, in line order
 		for m in monsters:
 			if m.hp <= 0:
 				continue
+			var haste: int = m.haste
+			if m.status.has("chill"):
+				haste = maxi(1, roundi(haste * float(db.bal("combat.chill_haste_mult", 0.5))))
+			m.meter += haste
+			if m.meter < METER_FULL:
+				continue
+			m.meter -= METER_FULL
 			if not _monster_status_turn(m):
 				continue
 			_monster_attack(m)
 			if hp <= 0:
-				return "dead"
-		# Panic: badly hurt mid-fight, the hero bolts (taking one parting blow).
-		if _first_alive().is_empty():
+				outcome = "dead"
+				break
+			# Panic: badly hurt mid-fight, the hero bolts (taking one parting blow).
+			if float(hp) / s.max_hp < s.nerve_threshold * float(db.bal("combat.panic_factor", 0.6)):
+				_monster_attack(_first_alive())
+				if hp <= 0:
+					outcome = "dead"
+					break
+				_emit("retreat", {"hp": hp, "reason": "panic"})
+				outcome = "fled"
+				break
+		if outcome != "cleared":
 			break
-		if float(hp) / s.max_hp < s.nerve_threshold * float(db.bal("combat.panic_factor", 0.6)):
-			var chaser := _first_alive()
-			_monster_attack(chaser)
-			if hp <= 0:
-				return "dead"
-			_emit("retreat", {"hp": hp, "reason": "panic"})
-			return "fled"
-	return "cleared"
+	tick = -1
+	return outcome
 
 
 func _hero_attack(m: Dictionary, mult: float, tag: String) -> void:
@@ -253,9 +278,6 @@ func _monster_status_turn(m: Dictionary) -> bool:
 	if st.has("stun"):
 		acts = false
 		_emit("skip_turn", {"actor": m.key, "status": "stun"})
-	elif st.has("chill") and rng.chance(0.5):
-		acts = false
-		_emit("skip_turn", {"actor": m.key, "status": "chill"})
 	for k in st.keys():
 		st[k] -= 1
 		if st[k] <= 0:
@@ -350,4 +372,11 @@ func _emit(type: String, data: Dictionary) -> void:
 	if not record:
 		return
 	data["type"] = type
+	if tick >= 0 and METER_EVENTS.has(type):
+		data["tick"] = tick
+		var meters := {"hero": hero_meter}
+		for m in monsters:
+			if m.hp > 0:
+				meters[m.key] = m.meter
+		data["meters"] = meters
 	events.append(data)

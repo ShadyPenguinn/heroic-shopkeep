@@ -64,6 +64,10 @@ Achievements are defined once in `data/achievements.json` with a per-store id ma
 
 Export templates are not committed. Install them from the editor (Editor → Manage Export Templates) before exporting. `data/*.json` is in every preset's include filter; keep it there or exported builds won't find their content.
 
+## Combat timing (Haste)
+
+Combat uses action meters, the same as the haste meter in Ore Heroes. Every tick, each unit adds its **Haste** to a meter, and when the meter reaches 100 it acts (overflow carries over). A Haste 12 archer acts about twice as often as a Haste 6 slime. Ranged heroes and casters start a fight with a full meter, so they shoot first. Frost's *chill* halves a monster's Haste; Shock's *stun* wastes a full meter. Haste comes from the class, gear (light weapons +, heavy armor and axes -), the Quicksilver mod and some traits. Events where someone acts carry `tick` and a `meters` snapshot so playback can draw action bars that match the simulation exactly.
+
 ## Event log
 
 `RunSimulator` documents every event type at the top of `src/sim/run_simulator.gd` (`run_start`, `room_enter`, `spawn`, `attack`, `hit`, `block`, `dodge`, `status`, `kill`, `drop`, `treasure`, `trap`, `heal`, `retreat`, `death`, `run_end`). Adding a mechanic means: emit a new event in the sim, add a case in `RunPlayback._show()`, add a beat length in `RunPlayback.BEAT`.

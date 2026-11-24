@@ -110,7 +110,7 @@ func _read_json(path: String) -> Variant:
 func _validate() -> void:
 	var elements: Array = bal("elements", [])
 	for c in rows("classes"):
-		_need(c, ["name", "sprite", "role", "weapons", "hp", "might", "guard", "nerve", "luck"], "classes")
+		_need(c, ["name", "sprite", "role", "weapons", "hp", "might", "guard", "nerve", "luck", "haste"], "classes")
 	for it in rows("items"):
 		_need(it, ["name", "slot", "tier", "stats", "sockets", "durability", "value"], "items")
 		if not ["weapon", "armor", "charm"].has(it.get("slot")):
@@ -125,7 +125,7 @@ func _validate() -> void:
 			if not has_row("materials", mat):
 				errors.append("mods.%s: cost uses unknown material '%s'" % [m.id, mat])
 	for mo in rows("monsters"):
-		_need(mo, ["name", "sprite", "hp", "might", "guard", "xp"], "monsters")
+		_need(mo, ["name", "sprite", "hp", "might", "guard", "haste", "xp"], "monsters")
 		for key in ["weak", "resist"]:
 			if mo.has(key) and not elements.has(mo[key]):
 				errors.append("monsters.%s: unknown %s element '%s'" % [mo.id, key, mo[key]])

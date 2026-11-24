@@ -13,6 +13,7 @@ var max_hp := 1
 var facing_left := false
 var color := Color(0.6, 0.8, 1.0)
 var dead := false
+var meter := 0.0   # action meter 0..100, drawn under the HP bar
 
 var _sprite: AnimatedSprite2D
 var _body: Node2D       # what flashes and squashes (sprite or placeholder)
@@ -57,6 +58,14 @@ func set_home(pos: Vector2) -> void:
 func set_hp(value: int) -> void:
 	hp = maxi(0, value)
 	queue_redraw()
+
+
+## Slides the action bar to a new value. A drop means this unit just acted.
+func set_meter(value: float, duration: float) -> void:
+	var tw := create_tween()
+	tw.tween_method(func(v: float):
+		meter = v
+		queue_redraw(), meter, clampf(value, 0.0, 100.0), duration)
 
 
 func body() -> Node2D:
@@ -121,6 +130,9 @@ func _draw() -> void:
 	var y := -PLACEHOLDER_SIZE.y - 8.0
 	draw_rect(Rect2(-w / 2, y, w, 3), Color(0.1, 0.05, 0.08))
 	draw_rect(Rect2(-w / 2, y, w * float(hp) / max_hp, 3), Color(0.85, 0.25, 0.25) if facing_left else Color(0.35, 0.85, 0.4))
+	# Action meter (Haste): fills, then empties when the unit acts.
+	draw_rect(Rect2(-w / 2, y + 4, w, 2), Color(0.1, 0.05, 0.08))
+	draw_rect(Rect2(-w / 2, y + 4, w * meter / 100.0, 2), Color(0.95, 0.8, 0.35))
 
 
 func _draw_placeholder() -> void:

@@ -101,3 +101,39 @@ func test_sim_speed(t: TestContext) -> void:
 	var per_sim_us := (Time.get_ticks_usec() - t0) / 1000.0
 	print("        (%.0f us per quick sim)" % per_sim_us)
 	t.ok(per_sim_us < 2000.0, "a quick sim should take well under 2 ms (took %.0f us)" % per_sim_us)
+
+
+func test_haste_means_more_actions(t: TestContext) -> void:
+	# Same fights, faster hero: the hero should act more often relative to monsters.
+	var ratios: Array = []
+	for haste_bonus in [0, 6]:
+		var h := _hero("soldier")
+		var gear := _kit(["iron_sword"])
+		var hero_acts := 0
+		var monster_acts := 0
+		for sd in 100:
+			var db2 := db
+			var hh := h.duplicate(true)
+			var r := RunSimulator.simulate(db2, hh, gear, 2, sd)
+			# haste via a stat mod stack: quicksilver x3 = +6
+			if haste_bonus > 0:
+				var g2 := _kit(["iron_sword"])
+				g2[0].mods = ["quicksilver", "quicksilver", "quicksilver"]
+				r = RunSimulator.simulate(db, hh, g2, 2, sd)
+			for ev in r.events:
+				if ev.type in ["attack", "miss"] and ev.get("tag", "") == "" and ev.actor == "hero":
+					hero_acts += 1
+				elif ev.type in ["hit", "block", "dodge"]:
+					monster_acts += 1
+		ratios.append(float(hero_acts) / maxi(1, monster_acts))
+	t.ok(ratios[1] > ratios[0] * 1.3, "faster hero should act much more often (%.2f vs %.2f)" % [ratios[1], ratios[0]])
+
+
+func test_meters_in_log(t: TestContext) -> void:
+	var r := RunSimulator.simulate(db, _hero(), _kit(["iron_sword"]), 1, 3)
+	var found := false
+	for ev in r.events:
+		if ev.type == "attack":
+			found = ev.has("meters") and ev.has("tick") and ev.meters.has("hero")
+			break
+	t.ok(found, "attack events carry tick and meter snapshot for playback")

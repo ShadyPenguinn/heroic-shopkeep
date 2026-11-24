@@ -24,7 +24,8 @@
     "return_chance_per_bond": 0.12
   },
   "combat": {
-    "max_rounds": 30,
+    "max_ticks": 3000,
+    "chill_haste_mult": 0.5,
     "crit_base": 0.05,
     "crit_per_luck": 0.015,
     "dodge_per_luck": 0.012,
