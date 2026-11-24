@@ -4,16 +4,18 @@ extends Control
 
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	size = get_viewport_rect().size
 	var bg := ColorRect.new()
 	bg.color = Color(0.09, 0.06, 0.09)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.size = size
 	add_child(bg)
 
+	var center := CenterContainer.new()
+	center.size = size
+	add_child(center)
 	var box := VBoxContainer.new()
-	box.set_anchors_preset(Control.PRESET_CENTER)
 	box.add_theme_constant_override("separation", 6)
-	add_child(box)
+	center.add_child(box)
 
 	var title := Label.new()
 	title.text = str(ProjectSettings.get_setting("application/config/name", "Game"))
@@ -38,11 +40,13 @@ func _ready() -> void:
 	buttons.append(_button(box, "Sim sandbox (dev)", func(): Router.goto("sandbox")))
 	buttons.append(_button(box, "Quit", func(): get_tree().quit()))
 
-	box.reset_size()
-	box.position = (Vector2(640, 360) - box.size) / 2.0
-	Juice.slide_in(title, Vector2(0, -12), 0.4)
-	for i in buttons.size():
-		Juice.slide_in(buttons[i], Vector2(0, 10), 0.3, 0.1 + i * 0.05)
+	# Containers own their children's positions, so entrances here fade, not slide.
+	var items: Array = [title, tag]
+	items.append_array(buttons)
+	for i in items.size():
+		items[i].modulate.a = 0.0
+		var t: Tween = items[i].create_tween()
+		t.tween_property(items[i], "modulate:a", 1.0, 0.3).set_delay(0.05 + i * 0.06)
 	if not buttons.is_empty():
 		buttons[0].grab_focus.call_deferred()
 	Audio.music("title")

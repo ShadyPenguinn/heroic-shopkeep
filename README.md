@@ -10,6 +10,10 @@ A dungeon lending-shop sim: lend gear to adventurers, watch their runs play out,
    - `godot --headless --path . -s res://tools/balance_sim.gd -- --runs 500` → death rate per class × gear tier × floor, also written to `build/balance.csv`.
    - `godot --headless --path . -s res://tools/season_sim.gd -- --seasons 200` → whole seasons played by a bot: win rate, which day seasons are lost, gold curve. Run it overnight after big changes.
 
+## Play it in the browser
+
+Every merge to `main` publishes a Web build to GitHub Pages: **https://shadypenguinn.github.io/heroic-shopkeep/** (one-time setup: repo Settings → Pages → Source: GitHub Actions). Hard-refresh to get the newest build.
+
 ## The four rules of this codebase
 
 1. **Content is data.** Heroes, traits, items, mods, materials, monsters, floors, achievements and every tuning number live in `data/*.json`. Code never hard-codes a sword or a damage number. Typos are caught at boot and shown on screen.
