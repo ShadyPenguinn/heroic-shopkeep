@@ -71,7 +71,66 @@ static func start_day(db: ContentDB, st: GameState) -> void:
 		var h := Hero.create(db, rng, st.new_uid("h"), st.day)
 		st.roster[h.uid] = h
 		st.counter.append(h.uid)
+	_stock_merchant(db, st)
 	st.phase = GameState.Phase.OUTFIT
+
+
+# --- the wandering merchant -------------------------------------------------------
+
+static func is_merchant_day(db: ContentDB, st: GameState) -> bool:
+	var interval := int(db.bal("rent_interval", 7))
+	return (st.day - 1) % interval + 1 == int(db.bal("merchant.week_day", 4))
+
+
+## The next day the merchant is in town (today counts if it's a merchant day).
+static func next_merchant_day(db: ContentDB, st: GameState) -> int:
+	var interval := int(db.bal("rent_interval", 7))
+	var week_day := int(db.bal("merchant.week_day", 4))
+	var week_start := ((st.day - 1) / interval) * interval
+	var d := week_start + week_day
+	if d < st.day:
+		d += interval
+	return d
+
+
+static func _stock_merchant(db: ContentDB, st: GameState) -> void:
+	st.merchant_stock.clear()
+	if not is_merchant_day(db, st):
+		return
+	var rng := Rng.new(Rng.derive(st.run_seed, ["merchant", st.day]))
+	var week := (st.day - 1) / int(db.bal("rent_interval", 7))
+	var weights_table: Array = db.bal("merchant.tier_weights_by_week", [[1, 0, 0]])
+	var weights: Array = weights_table[mini(week, weights_table.size() - 1)]
+	var tier_weights := {}
+	for i in weights.size():
+		tier_weights[i + 1] = float(weights[i])
+	var by_tier := {}
+	for it in db.rows("items"):
+		var tier := int(it.get("tier", 1))
+		if not by_tier.has(tier):
+			by_tier[tier] = []
+		by_tier[tier].append(it.id)
+	var price_range: Array = db.bal("merchant.price_mult", [1.0, 1.0])
+	for i in rng.range_arr(db.bal("merchant.stock_size", [4, 6])):
+		var tier: int = rng.weighted(tier_weights)
+		var item_id: String = rng.pick(by_tier.get(tier, by_tier[1]))
+		var g := Gear.create(db, item_id, st.new_uid("g"))
+		var price := roundi(float(Gear.def_of(db, g).get("value", 10)) * rng.range_f(float(price_range[0]), float(price_range[1])))
+		st.merchant_stock.append({"gear": g, "price": price})
+
+
+static func buy(db: ContentDB, st: GameState, offer_index: int) -> String:
+	if offer_index < 0 or offer_index >= st.merchant_stock.size():
+		return "the merchant has nothing like that"
+	var offer: Dictionary = st.merchant_stock[offer_index]
+	if st.gold < int(offer.price):
+		return "not enough gold"
+	st.gold -= int(offer.price)
+	st.inventory.append(offer.gear)
+	st.merchant_stock.remove_at(offer_index)
+	st.bump_stat("gold_spent_gear", int(offer.price))
+	st.bump_stat("gear_bought")
+	return ""
 
 
 # --- outfitting ----------------------------------------------------------------
@@ -266,6 +325,7 @@ static func end_day(db: ContentDB, st: GameState) -> Dictionary:
 	st.counter.clear()
 	st.results.clear()
 	st.picks_left.clear()
+	st.merchant_stock.clear()  # the merchant moves on at nightfall
 	if out.won:
 		st.phase = GameState.Phase.WON
 	elif out.lost:

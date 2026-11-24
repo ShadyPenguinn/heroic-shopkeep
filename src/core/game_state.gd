@@ -25,6 +25,7 @@ var counter: Array = []         # hero uids at the counter today
 var loans: Array = []           # [{hero, gear: [gear dicts], floor}] gear is off the racks while lent
 var results: Array = []         # run results for today's delves (kept so a mid-delve save replays)
 var picks_left: Dictionary = {} # hero uid -> cards the player may still take at dusk
+var merchant_stock: Array = []  # [{gear, price}] today's wandering merchant offers (empty when not in town)
 var memorial: Array = []        # [{hero, class_id, day, floor, killer, gear: [gear dicts]}]
 var upgrades: Dictionary = {}   # upgrade id -> level
 var stats: Dictionary = {}      # lifetime counters for this season (loans, deaths, gold_earned ...)
@@ -69,6 +70,7 @@ func to_dict() -> Dictionary:
 		"loans": loans,
 		"results": results,
 		"picks_left": picks_left,
+		"merchant_stock": merchant_stock,
 		"memorial": memorial,
 		"upgrades": upgrades,
 		"stats": stats,
@@ -93,6 +95,7 @@ static func from_dict(d: Dictionary) -> GameState:
 	s.loans = d.get("loans", [])
 	s.results = d.get("results", [])
 	s.picks_left = d.get("picks_left", {})
+	s.merchant_stock = d.get("merchant_stock", [])
 	s.memorial = d.get("memorial", [])
 	s.upgrades = d.get("upgrades", {})
 	s.stats = d.get("stats", {})
@@ -118,7 +121,11 @@ static func _fix_json_numbers(s: GameState) -> void:
 		for key in ["level", "xp", "bond", "runs", "kills", "day_met"]:
 			if h.has(key):
 				h[key] = int(h[key])
+	for offer in s.merchant_stock:
+		offer.price = int(offer.price)
 	var all_gear: Array = s.inventory.duplicate()
+	for offer in s.merchant_stock:
+		all_gear.append(offer.gear)
 	for loan in s.loans:
 		all_gear.append_array(loan.get("gear", []))
 	for g in all_gear:

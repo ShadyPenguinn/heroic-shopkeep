@@ -46,6 +46,14 @@ func start_day() -> void:
 	Events.day_started.emit(state.day)
 
 
+func buy(offer_index: int) -> String:
+	var gear: Dictionary = state.merchant_stock[offer_index].gear if offer_index < state.merchant_stock.size() else {}
+	var err := Season.buy(db, state, offer_index)
+	if err == "":
+		Events.gear_bought.emit(gear)
+	return err
+
+
 func lend(hero_uid: String, gear_uids: Array, floor_index: int) -> String:
 	var err := Season.lend(db, state, hero_uid, gear_uids, floor_index)
 	if err == "":

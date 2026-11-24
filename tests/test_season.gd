@@ -94,3 +94,54 @@ func test_whole_season_is_deterministic(t: TestContext) -> void:
 			bot.play_day(db, st)
 		finals.append(JSON.stringify(st.to_dict()))
 	t.eq(finals[0], finals[1], "same seed, same season")
+
+
+func test_merchant_comes_mid_week(t: TestContext) -> void:
+	var st := Season.new_game(db, 8)
+	var days: Array = []
+	for d in range(1, 29):
+		st.day = d
+		if Season.is_merchant_day(db, st):
+			days.append(d)
+	t.eq(days, [4, 11, 18, 25], "merchant days")
+	st.day = 5
+	t.eq(Season.next_merchant_day(db, st), 11, "next visit after day 4")
+
+
+func test_buying_from_merchant(t: TestContext) -> void:
+	var st := Season.new_game(db, 9)
+	st.day = 4
+	Season.start_day(db, st)
+	t.ok(st.merchant_stock.size() >= 4, "merchant has stock on day 4")
+	var offer: Dictionary = st.merchant_stock[0]
+	st.gold = int(offer.price) - 1
+	t.ok(Season.buy(db, st, 0) != "", "can't buy without the gold")
+	st.gold = int(offer.price)
+	var racks := st.inventory.size()
+	t.eq(Season.buy(db, st, 0), "", "buy")
+	t.eq(st.gold, 0, "gold spent")
+	t.eq(st.inventory.size(), racks + 1, "gear on the racks")
+	st.phase = GameState.Phase.DUSK
+	Season.end_day(db, st)
+	t.ok(st.merchant_stock.is_empty(), "merchant leaves at night")
+	st.day = 6
+	st.phase = GameState.Phase.MORNING
+	Season.start_day(db, st)
+	t.ok(st.merchant_stock.is_empty(), "no merchant on day 6")
+
+
+func test_merchant_stock_improves_over_season(t: TestContext) -> void:
+	var early := 0.0
+	var late := 0.0
+	for sd in 30:
+		for pair in [[4, "early"], [25, "late"]]:
+			var st := Season.new_game(db, sd)
+			st.day = pair[0]
+			Season.start_day(db, st)
+			for o in st.merchant_stock:
+				var tier := float(Gear.def_of(db, o.gear).tier)
+				if pair[1] == "early":
+					early += tier
+				else:
+					late += tier
+	t.ok(late > early * 1.3, "week 4 stock should be clearly better (%.0f vs %.0f)" % [late, early])

@@ -11,12 +11,42 @@ var estimate_samples := 40
 ## Plays a whole day from MORNING through end_day. Returns end_day's result.
 func play_day(db: ContentDB, st: GameState) -> Dictionary:
 	Season.start_day(db, st)
+	shop_merchant(db, st)
 	outfit(db, st)
 	Season.send_delves(db, st)
 	Season.begin_dusk(db, st)
 	pick_cards(db, st)
 	tend_shop(db, st)
 	return Season.end_day(db, st)
+
+
+## Buys gear that fills a gap on the racks, keeping enough gold for the coming rent.
+func shop_merchant(db: ContentDB, st: GameState) -> Array:
+	var bought: Array = []
+	var reserve := int(Season.next_rent(db, st).amount)
+	var buying := true
+	while buying:
+		buying = false
+		var best := -1
+		var best_score := 0.0
+		for i in st.merchant_stock.size():
+			var offer: Dictionary = st.merchant_stock[i]
+			if st.gold - int(offer.price) < reserve:
+				continue
+			var def := Gear.def_of(db, offer.gear)
+			var have := 0
+			for g in st.inventory:
+				if Gear.def_of(db, g).slot == def.slot and int(g.durability) > 0:
+					have += 1
+			var score := float(def.get("tier", 1)) * 10.0 / maxf(1.0, float(have)) - float(offer.price) * 0.05
+			if score > best_score:
+				best_score = score
+				best = i
+		if best >= 0:
+			bought.append(st.merchant_stock[best].gear)
+			Season.buy(db, st, best)
+			buying = true
+	return bought
 
 
 func outfit(db: ContentDB, st: GameState) -> void:

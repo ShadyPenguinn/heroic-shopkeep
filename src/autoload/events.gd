@@ -11,6 +11,7 @@ signal settings_changed
 signal state_loaded
 signal day_started(day: int)
 signal gear_lent(hero_uid: String)
+signal gear_bought(gear: Dictionary)
 signal delves_sent(results: Array)
 signal dusk_report(report: Array)
 signal card_taken(hero_uid: String, card: Dictionary)

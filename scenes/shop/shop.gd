@@ -52,8 +52,8 @@ func _ready() -> void:
 func _refresh() -> void:
 	var st := Game.state
 	var rent := Season.next_rent(db, st)
-	_status.text = "Day %d/%d   Gold %d   Rent %d due day %d   Racks %d   Lost so far %d" % [
-		st.day, int(db.bal("season_length", 28)), st.gold, rent.amount, rent.day, st.inventory.size(), int(st.stats.get("deaths", 0))]
+	_status.text = "Day %d/%d   Gold %d   Rent %d due day %d   Merchant day %d   Racks %d   Lost %d" % [
+		st.day, int(db.bal("season_length", 28)), st.gold, rent.amount, rent.day, Season.next_merchant_day(db, st), st.inventory.size(), int(st.stats.get("deaths", 0))]
 	match st.phase:
 		GameState.Phase.MORNING:
 			_advance.text = "Open the shop"
@@ -77,7 +77,14 @@ func _on_advance() -> void:
 			for uid in st.counter:
 				var h: Dictionary = st.roster[uid]
 				_say("  %s, Lv %d, bond %d" % [Hero.display_name(db, h), h.level, h.bond])
+			if not st.merchant_stock.is_empty():
+				var offers: Array = []
+				for o in st.merchant_stock:
+					offers.append("%s %dg" % [Gear.display_name(db, o.gear), o.price])
+				_say("[color=#fc6]The wandering merchant is in town:[/color] " + ", ".join(offers))
 		GameState.Phase.OUTFIT:
+			for g in _bot.shop_merchant(db, st):
+				_say("  Bought %s." % Gear.display_name(db, g))
 			_bot.outfit(db, st)
 			for loan in st.loans:
 				var names: Array = []
